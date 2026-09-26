@@ -823,6 +823,9 @@ inline int GetBitmapResourceIdForCurrentDPI(int resourceId) noexcept {
 	GetPrivateProfileString(lpSection, lpName, lpDefault, lpReturnedStr, nSize, szIniFile)
 #define IniGetInt(lpSection, lpName, nDefault) \
 	GetPrivateProfileInt(lpSection, lpName, nDefault, szIniFile)
+#define IniGetBool(lpSection, lpName, bDefault) \
+	(IniGetInt(lpSection, lpName, (bDefault) ? 1 : 0) != 0)
+
 #define IniSetString(lpSection, lpName, lpString) \
 	WritePrivateProfileString(lpSection, lpName, lpString, szIniFile)
 
@@ -1328,3 +1331,5 @@ inline void** AsPPVArgs(T** pp) noexcept {
 	static_assert(__is_base_of(IUnknown, T));
 	return reinterpret_cast<void **>(pp);
 }
+
+bool IsSystemDarkMode() noexcept;

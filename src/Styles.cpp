@@ -39,6 +39,8 @@
 #include "Styles.h"
 #include "Dialogs.h"
 #include "resource.h"
+#include "Darkmodelib.h"
+#include "Notepad4.h"
 
 extern EDITLEXER lexGlobal;
 extern EDITLEXER lexTextFile;
@@ -274,6 +276,7 @@ static PEDITLEXER pLexArray[] = {
 	&lexZig,
 };
 
+//extern HWND hwndEdit;
 // global styles at the beginning of the array not visible in
 // "Select Scheme" list, don't participate in file extension match.
 #define LEXER_INDEX_MATCH		1	// global styles
@@ -324,6 +327,9 @@ static int iCsvOption = ('\"' << 8) | ',';
 #define STYLESMODIFIED_COLOR		8
 
 #define MAX_CUSTOM_COLOR_COUNT		16
+
+int np2StyleThemeOption = StyleThemeOption_ByOS;
+
 // run tools/CountColor.py on exported scheme file
 static const COLORREF defaultCustomColor[MAX_CUSTOM_COLOR_COUNT] = {
 	RGB(0xB0, 0x00, 0xB0),	// Constant, Macro, Operator
@@ -352,6 +358,9 @@ CallTipInfo callTipInfo;
 static bool bCustomColorLoaded = false;
 
 int		np2StyleTheme;
+int np2EditorThemeOption = EditorThemeOption_FollowProgram; // 用户选择
+int np2EditorTheme = StyleTheme_Default;					// 编辑器实际用哪套 ini
+
 static UINT fStylesModified = STYLESMODIFIED_NONE;
 static bool fWarnedNoIniFile = false;
 static int	defaultBaseFontSize = 11*SC_FONT_SIZE_MULTIPLIER; // 11 pt
@@ -626,12 +635,24 @@ void Style_ReleaseResources() noexcept {
 	}
 }
 
-static inline bool IsStyleLoaded(LPCEDITLEXER pLex) noexcept {
-	return pLex->iStyleTheme == np2StyleTheme && pLex->szStyleBuf != nullptr;
+static int GetEditorTheme() noexcept {
+	if (np2EditorThemeOption == EditorThemeOption_FollowProgram) {
+		return np2StyleTheme; // 跟程序主题
+	}
+	//return (np2EditorThemeOption == EditorThemeOption_Dark) ? StyleTheme_Dark : StyleTheme_Default;
+	return (np2EditorThemeOption == EditorThemeOption_Dark) ? StyleTheme_Dark : StyleTheme_Default;
 }
 
+static inline bool IsStyleLoaded(LPCEDITLEXER pLex) noexcept {
+	//return pLex->iStyleTheme == np2StyleTheme && pLex->szStyleBuf != nullptr;
+	return pLex->iStyleTheme == GetEditorTheme() && pLex->szStyleBuf != nullptr;
+}
+
+
+
 static inline LPCWSTR GetStyleThemeFilePath() noexcept {
-	return (np2StyleTheme == StyleTheme_Dark) ? darkStyleThemeFilePath : szIniFile;
+	//return (np2StyleTheme == StyleTheme_Dark) ? darkStyleThemeFilePath : szIniFile;
+	return (GetEditorTheme() == StyleTheme_Dark) ? darkStyleThemeFilePath : szIniFile;
 }
 
 static inline void FindDarkThemeFile(LPWSTR lpszIniFile) noexcept {
@@ -669,7 +690,8 @@ static inline void SaveLexTabSettings(IniSectionBuilder &section, LPCEDITLEXER p
 }
 
 static void Style_LoadOneEx(PEDITLEXER pLex, IniSectionParser &section, WCHAR *pIniSectionBuf, int cchIniSection) noexcept {
-	pLex->iStyleTheme = static_cast<uint8_t>(np2StyleTheme);
+	//pLex->iStyleTheme = static_cast<uint8_t>(np2StyleTheme);
+	pLex->iStyleTheme = static_cast<uint8_t>(GetEditorTheme()); 
 	LPCWSTR themePath = GetStyleThemeFilePath();
 	GetPrivateProfileSection(pLex->pszName, pIniSectionBuf, cchIniSection, themePath);
 
@@ -791,11 +813,33 @@ void Style_Load() noexcept {
 	}
 
 	// default scheme
+	//int iValue = section.GetInt(L"DefaultScheme", 0);
+	//iDefaultLexerIndex = Style_GetMatchLexerIndex(iValue + NP2LEX_TEXTFILE);
+  //
+	//iValue = section.GetInt(L"StyleTheme", StyleTheme_Default);
+	//np2StyleTheme = clamp<int>(iValue, StyleTheme_Default, StyleTheme_Max);
+	// default scheme
 	int iValue = section.GetInt(L"DefaultScheme", 0);
 	iDefaultLexerIndex = Style_GetMatchLexerIndex(iValue + NP2LEX_TEXTFILE);
 
-	iValue = section.GetInt(L"StyleTheme", StyleTheme_Default);
-	np2StyleTheme = clamp<int>(iValue, StyleTheme_Default, StyleTheme_Max);
+	// style theme
+	iValue = section.GetInt(L"StyleTheme", StyleThemeOption_ByOS);
+	np2StyleThemeOption = clamp<int>(iValue, StyleThemeOption_ByOS, StyleThemeOption_Max);
+	if (np2StyleThemeOption >= StyleThemeOption_Max) {
+		np2StyleThemeOption = StyleThemeOption_ByOS;
+	}
+	if (np2StyleThemeOption == StyleThemeOption_ByOS) {
+		np2StyleTheme = IsSystemDarkMode() ? StyleTheme_Dark : StyleTheme_Default;
+	} else {
+		np2StyleTheme = (np2StyleThemeOption == StyleThemeOption_Dark) ? StyleTheme_Dark : StyleTheme_Default;
+	}
+	// editor theme
+	iValue = section.GetInt(L"EditorTheme", EditorThemeOption_FollowProgram);
+	np2EditorThemeOption = clamp<int>(iValue, EditorThemeOption_FollowProgram, EditorThemeOption_Max);
+	if (np2EditorThemeOption >= EditorThemeOption_Max) {
+		np2EditorThemeOption = EditorThemeOption_FollowProgram;
+	}
+	np2EditorTheme = GetEditorTheme();
 
 	// auto select
 	bAutoSelect = section.GetBool(L"AutoSelect", true);
@@ -814,7 +858,8 @@ void Style_Load() noexcept {
 		}
 	}
 
-	if (np2StyleTheme == StyleTheme_Dark && StrIsEmpty(darkStyleThemeFilePath)) {
+	//if (np2StyleTheme == StyleTheme_Dark && StrIsEmpty(darkStyleThemeFilePath)) {
+	if (np2EditorTheme == StyleTheme_Dark && StrIsEmpty(darkStyleThemeFilePath)) {
 		FindDarkThemeFile(darkStyleThemeFilePath);
 	}
 
@@ -891,7 +936,9 @@ void Style_Save() noexcept {
 	section.SetString(L"FavoriteSchemes", favoriteSchemesConfig);
 	// default scheme
 	section.SetIntEx(L"DefaultScheme", pLexArray[iDefaultLexerIndex]->rid - NP2LEX_TEXTFILE, 0);
-	section.SetIntEx(L"StyleTheme", np2StyleTheme, StyleTheme_Default);
+	//section.SetIntEx(L"StyleTheme", np2StyleTheme, StyleTheme_Default);
+	section.SetIntEx(L"StyleTheme", np2StyleThemeOption, StyleThemeOption_ByOS);
+	section.SetIntEx(L"EditorTheme", np2EditorThemeOption, EditorThemeOption_FollowProgram);
 
 	// auto select
 	section.SetBoolEx(L"AutoSelect", bAutoSelect, true);
@@ -1152,21 +1199,73 @@ void Style_OnDPIChanged(LPCEDITLEXER pLex) noexcept {
 }
 
 void Style_OnStyleThemeChanged(int theme) noexcept {
-	if (theme == np2StyleTheme) {
+	if (theme == np2StyleThemeOption) {
 		return;
 	}
-	if (theme != StyleTheme_Default) {
-		if (StrIsEmpty(darkStyleThemeFilePath)) {
-			FindDarkThemeFile(darkStyleThemeFilePath);
-		}
-	}
+	np2StyleThemeOption = theme;
+	// 决定实际主题
+	const int actual = (theme == StyleThemeOption_ByOS)
+						   ? (IsSystemDarkMode() ? StyleTheme_Dark : StyleTheme_Default)
+						   : ((theme == StyleThemeOption_Dark) ? StyleTheme_Dark : StyleTheme_Default);
 
 	if (fStylesModified) {
 		SaveSettingsNow(true, true);
 	}
-	np2StyleTheme = theme;
+	np2StyleTheme = actual;
 	bCustomColorLoaded = false;
-	Style_SetLexer(pLexCurrent, false);
+
+	// 如果编辑器主题跟随程序主题，两个窗格都要更新
+	if (np2EditorThemeOption == EditorThemeOption_FollowProgram) {
+		np2EditorTheme = GetEditorTheme();
+		Style_LoadAll(StyleLoadFlag_Reload);
+
+		InitScintillaHandle(hwndEdit1);
+		Style_SetLexer(pLexCurrent, true);
+		SciCall_ColouriseAll();
+
+		if (hwndEdit2) {
+			InitScintillaHandle(hwndEdit2);
+			Style_SetLexer(pLexCurrent, true);
+			SciCall_ColouriseAll();
+		}
+
+		InitScintillaHandle(hwndEdit);
+	} else {
+		// 编辑器主题独立，只更新当前活动窗格
+		Style_SetLexer(pLexCurrent, false);
+	}
+
+	if (hwndEdit) {
+		dmlib::enableDarkScrollBarForWindowAndChildren(hwndEdit);
+	}
+}
+
+void Style_OnEditorThemeChanged(int option) noexcept {
+	if (option == np2EditorThemeOption) {
+		return;
+	}
+	np2EditorThemeOption = option;
+	const int actual = GetEditorTheme();
+	if (actual == np2EditorTheme) {
+		return;
+	}
+	np2EditorTheme = actual;
+
+	bCustomColorLoaded = false;
+	Style_LoadAll(StyleLoadFlag_Reload);
+	// 对两个窗格都应用样式
+	InitScintillaHandle(hwndEdit1);
+	Style_SetLexer(pLexCurrent, true);
+	SciCall_ColouriseAll();
+
+	if (hwndEdit2) {
+		InitScintillaHandle(hwndEdit2);
+		Style_SetLexer(pLexCurrent, true);
+		SciCall_ColouriseAll();
+	}
+
+	// 切回当前活动窗格
+	InitScintillaHandle(hwndEdit);
 }
 
 void Style_UpdateCaret() noexcept {
@@ -3226,6 +3325,13 @@ static LPWSTR AddLexFilterStr(FileDialog &dialog, LPWSTR szFilter, LPCEDITLEXER 
 
 NP2_noinline
 void Style_GetFileDialogFilter(FileDialog &dialog, LPCWSTR lpszFile, int lexers[]) noexcept {
+	if (pLexCurrent == nullptr || pLexCurrent->szExtensions == nullptr) {
+		WCHAR dbg[128];
+		wsprintf(dbg, L"pLexCurrent=%p szExt=%p", pLexCurrent,
+			pLexCurrent ? pLexCurrent->szExtensions : nullptr);
+		SetWindowText(hwndMain, dbg);
+		return;
+	}
 	constexpr UINT maxFilterCount = MAX_FAVORITE_SCHEMES_COUNT + 2 + LEXER_INDEX_GENERAL - LEXER_INDEX_MATCH;
 	static_assert(maxFilterCount == OPENDLG_MAX_LEXER_COUNT);
 	UINT length = maxFilterCount*(MAX_EDITLEXER_NAME_SIZE + MAX_EDITLEXER_EXT_SIZE*3*2);
@@ -4536,7 +4642,8 @@ static INT_PTR CALLBACK Style_ConfigDlgProc(HWND hwnd, UINT umsg, WPARAM wParam,
 					Style_ResetAll(true);
 				} else {
 					// reload styles from external file
-					Style_LoadAll(StyleLoadFlag_Reload);
+					//Style_LoadAll(StyleLoadFlag_Reload);
+					Style_LoadAll(static_cast<StyleLoadFlag>(StyleLoadFlag_Reload | StyleLoadFlag_Apply));
 					// reset file extensions to built-in default
 					Style_ResetAll(false);
 				}
@@ -4673,7 +4780,8 @@ static INT_PTR CALLBACK Style_ConfigDlgProc(HWND hwnd, UINT umsg, WPARAM wParam,
 void Style_ConfigDlg(HWND hwnd) noexcept {
 	StyleConfigDlgParam param;
 
-	Style_LoadAll(StyleLoadFlag_Default);
+	//Style_LoadAll(StyleLoadFlag_Default);
+	Style_LoadAll(static_cast<StyleLoadFlag>(StyleLoadFlag_Reload | StyleLoadFlag_Apply));
 	// Backup Styles
 	param.hFontTitle = nullptr;
 	param.bApply = false;

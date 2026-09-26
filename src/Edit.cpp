@@ -41,9 +41,10 @@
 #include "Styles.h"
 #include "Dialogs.h"
 #include "resource.h"
+#include "Notepad4.h"
 
 extern HWND hwndMain;
-extern HWND hwndEdit;
+//extern HWND hwndEdit;
 extern DWORD dwLastIOError;
 extern HWND hDlgFindReplace;
 
@@ -5946,11 +5947,19 @@ void EditReplaceAllInSelection(EditFindReplace &efr, EditReplaceAllFlag flag) no
 //
 // EditLineNumDlgProc()
 //
+extern bool bPagedMode;
+extern bool bGotoWholeFile;
 static INT_PTR CALLBACK EditLineNumDlgProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam) noexcept {
 	UNREFERENCED_PARAMETER(lParam);
 
 	switch (umsg) {
 	case WM_INITDIALOG: {
+		SetWindowLongPtr(hwnd, DWLP_USER, lParam);
+		if (bPagedMode) {
+			CheckDlgButton(hwnd, IDC_GOTO_WHOLE_FILE, bGotoWholeFile ? BST_CHECKED : BST_UNCHECKED);
+		} else {
+			EnableWindow(GetDlgItem(hwnd, IDC_GOTO_WHOLE_FILE), FALSE);
+		}
 		const Sci_Line iCurLine = SciCall_LineFromPosition(SciCall_GetCurrentPos()) + 1;
 		const Sci_Line iMaxLine = SciCall_GetLineCount();
 		const Sci_Position iLength = SciCall_GetLength();
@@ -5982,14 +5991,11 @@ static INT_PTR CALLBACK EditLineNumDlgProc(HWND hwnd, UINT umsg, WPARAM wParam, 
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
 		case IDOK: {
-			bool fTranslated;
-			bool fTranslated2;
+			bool fTranslated, fTranslated2;
 			WCHAR tchLn[32];
 			Sci_Line iNewLine = 0;
 			Sci_Position iNewCol = 0;
 
-			// Extract line number from the text entered
-			// For example: "5410:" will result in 5410
 			GetDlgItemText(hwnd, IDC_LINENUM, tchLn, COUNTOF(tchLn));
 #if defined(_WIN64)
 			int64_t iLine = 0;
@@ -6018,26 +6024,14 @@ static INT_PTR CALLBACK EditLineNumDlgProc(HWND hwnd, UINT umsg, WPARAM wParam, 
 				return TRUE;
 			}
 
-			const Sci_Line iMaxLine = SciCall_GetLineCount();
-			const Sci_Position iLength = SciCall_GetLength();
-			// directly goto specific position
-			if (fTranslated2 && !fTranslated) {
-				if (iNewCol > 0 && iNewCol <= iLength) {
-					iNewCol = SciCall_PositionBefore(iNewCol);
-					EditSelectEx(iNewCol, iNewCol);
-					SciCall_ChooseCaretX();
-					EndDialog(hwnd, IDOK);
-				} else {
-					PostMessage(hwnd, WM_NEXTDLGCTL, AsInteger<WPARAM>(GetDlgItem(hwnd, IDC_COLNUM)), TRUE);
-				}
-			} else if (iNewLine > 0 && iNewLine <= iMaxLine) {
-				EditJumpTo(iNewLine, iNewCol);
-				EndDialog(hwnd, IDOK);
-			} else {
-				PostMessage(hwnd, WM_NEXTDLGCTL, AsInteger<WPARAM>(GetDlgItem(hwnd, ((iNewCol > 0) ? IDC_LINENUM : IDC_COLNUM))), TRUE);
+			int *result = (int *)GetWindowLongPtr(hwnd, DWLP_USER);
+			if (result) {
+				result[0] = (int)iNewLine;
+				result[1] = (int)iNewCol;
 			}
-		}
-		break;
+			bGotoWholeFile = IsButtonChecked(hwnd, IDC_GOTO_WHOLE_FILE) ? true : false;
+			EndDialog(hwnd, IDOK);
+		} break;
 
 		case IDCANCEL:
 			EndDialog(hwnd, IDCANCEL);
@@ -6054,9 +6048,22 @@ static INT_PTR CALLBACK EditLineNumDlgProc(HWND hwnd, UINT umsg, WPARAM wParam, 
 //
 // EditLinenumDlg()
 //
-bool EditLineNumDlg(HWND hwnd) noexcept {
-	const INT_PTR iResult = ThemedDialogBoxParam(g_hInstance, MAKEINTRESOURCE(IDD_LINENUM), GetParent(hwnd), EditLineNumDlgProc, 0);
-	return iResult == IDOK;
+bool EditLineNumDlg(HWND hwnd, int *line, int *col) noexcept {
+	int result[2] = { 0, 0 };
+	//const INT_PTR iResult = ThemedDialogBoxParam(g_hInstance, MAKEINTRESOURCE(IDD_LINENUM),
+	//	GetParent(hwnd), EditLineNumDlgProc,
+	//	AsInteger<LPARAM>(result));
+	const INT_PTR iResult = ThemedDialogBoxParam(g_hInstance, MAKEINTRESOURCE(IDD_LINENUM),
+		GetParent(hwnd), EditLineNumDlgProc,
+		AsInteger<LPARAM>(result));
+	if (iResult == IDOK) {
+		if (line)
+			*line = result[0];
+		if (col)
+			*col = result[1];
+		return true;
+	}
+	return false;
 }
 
 //=============================================================================

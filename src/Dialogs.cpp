@@ -37,6 +37,7 @@
 #include "Dialogs.h"
 #include "resource.h"
 #include "Version.h"
+#include "Darkmodelib.h"
 
 extern HWND		hwndMain;
 extern DWORD	dwLastIOError;
@@ -114,7 +115,17 @@ int MsgBox(UINT uType, UINT uIdMsg, ...) noexcept {
 
 	HWND hwnd = GetMsgBoxParent();
 	DialogHook_Start(DialogRefData_MessageBox);
-	const int result = MessageBoxEx(hwnd, szText, szTitle, uType, lang);
+	//{
+	//	WCHAR dbg[64];
+	//	wsprintf(dbg, L"\n\n[debug: theme=%d]", np2StyleTheme);
+	//	StrCatBuff(szText, dbg, COUNTOF(szText));
+	//}
+	int result = -1;
+	if (np2StyleTheme == StyleTheme_Dark) {
+		result = dmlib::darkMessageBoxW(hwnd, szText, szTitle, uType);
+	} else {
+		result = MessageBox(hwnd, szText, szTitle, uType);
+	}
 	DialogHook_Stop();
 	return result;
 }
@@ -2771,6 +2782,53 @@ INT_PTR CALLBACK SystemIntegrationDlgProc(HWND hwnd, UINT umsg, WPARAM wParam, L
 	return FALSE;
 }
 
+}
+
+static const UINT pageSizeOptions[] = { 50, 100, 150, 200, 300, 400, 500 };
+
+static INT_PTR CALLBACK PageSizeDlgProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam) noexcept {
+	switch (umsg) {
+	case WM_INITDIALOG: {
+		//MessageBox(nullptr, L"PageSizeDlgProc init", L"Debug", MB_OK);
+		HWND hCombo = GetDlgItem(hwnd, IDC_PAGE_SIZE);
+		for (UINT i = 0; i < COUNTOF(pageSizeOptions); i++) {
+			WCHAR szText[32];
+			wsprintf(szText, L"%u MB", pageSizeOptions[i]);
+			ComboBox_AddString(hCombo, szText);
+			if (pageSizeOptions[i] == static_cast<UINT>(g_pageSize / (1024 * 1024))) {
+				ComboBox_SetCurSel(hCombo, i);
+			}
+		}
+		if (ComboBox_GetCurSel(hCombo) == CB_ERR) {
+			ComboBox_SetCurSel(hCombo, 1); // 默认 100MB
+		}
+		DarkMode_InitDialog(hwnd);
+		return TRUE;
+	}
+
+	case WM_COMMAND:
+		switch (LOWORD(wParam)) {
+		case IDOK: {
+			HWND hCombo = GetDlgItem(hwnd, IDC_PAGE_SIZE);
+			const int sel = ComboBox_GetCurSel(hCombo);
+			if (sel >= 0 && sel < static_cast<int>(COUNTOF(pageSizeOptions))) {
+				g_pageSize = pageSizeOptions[sel] * 1024 * 1024;
+			}
+			EndDialog(hwnd, IDOK);
+			return TRUE;
+		}
+		case IDCANCEL:
+			EndDialog(hwnd, IDCANCEL);
+			return TRUE;
+		}
+		break;
+	}
+	return FALSE;
+}
+
+bool PageSizeDlg(HWND hwnd) noexcept {
+	return ThemedDialogBoxParam(g_hInstance, MAKEINTRESOURCE(IDD_PAGE_SIZE),
+			   hwnd, PageSizeDlgProc, 0) == IDOK;
 }
 
 void SystemIntegrationDlg(HWND hwnd) noexcept {

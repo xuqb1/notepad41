@@ -3184,3 +3184,17 @@ void RestoreWndFromTray(HWND hwnd) noexcept {
 	// call to DrawAnimatedRects, or the taskbar will not refresh itself
 	// properly until DAR finished
 }
+
+bool IsSystemDarkMode() noexcept {
+    HKEY hKey;
+    DWORD value = 1;
+    DWORD size = sizeof(value);
+    if (RegOpenKeyExW(HKEY_CURRENT_USER,
+            L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+            0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+        RegQueryValueExW(hKey, L"AppsUseLightTheme", nullptr, nullptr,
+                         reinterpret_cast<LPBYTE>(&value), &size);
+        RegCloseKey(hKey);
+    }
+    return value == 0;
+}

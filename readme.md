@@ -4,7 +4,79 @@ Notepad4 (Notepad2⨯2, Notepad2++) is a light-weight Scintilla based text edito
 
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](License.txt) [![Latest release](https://img.shields.io/github/release/zufuliu/notepad4.svg)](https://github.com/zufuliu/notepad4/releases) [![Downloads](https://img.shields.io/github/downloads/zufuliu/notepad4/total.svg)](https://github.com/zufuliu/notepad4/releases)
 
+> **本分支（notepad41）基于 [Notepad4](https://github.com/zufuliu/notepad4) 做了以下增强。**
+>
+> This branch (notepad41) adds the following enhancements on top of [Notepad4](https://github.com/zufuliu/notepad4).
+
+## 新增功能 / New Features
+
+### 1. 程序主题与编辑器主题分离 / Separate Program and Editor Theme
+
+- **程序主题 / Program Theme**：控制标题栏、菜单栏、工具栏、状态栏的颜色。支持 `By OS`（跟随系统）、`Light`、`Dark`。
+- **编辑器主题 / Editor Theme**：控制编辑区的颜色。支持 `Follow Program`（跟随程序主题）、`Light`、`Dark`。
+- 菜单：`Scheme` → `Program Theme` / `Editor Theme`。
+- Menu: `Scheme` → `Program Theme` / `Editor Theme`.
+
+### 2. 分屏 / Split View
+
+- **左右分屏 / Horizontal Split**：`View` → `Split View H`。
+- **上下分屏 / Vertical Split**：`View` → `Split View V`。
+- 两个窗格共享文档，编辑同步，折叠状态独立。
+- 分隔条可拖动调整比例。
+- 分页模式下禁止分屏。
+- Two panes share the same document, editing is synchronized, folding is independent.
+- Splitter can be dragged to adjust the ratio.
+- Split view is disabled in paged mode.
+
+### 3. 大文件分页 / Large File Paging
+
+- 文件大于 500MB 时自动分页。
+- 分页大小可选：50 / 100 / 150 / 200 / 300 / 400 / 500 MB。
+- 分页器：上一页 / 下一页 / 跳转。
+- 页码跟随滚动，状态栏显示全局行号。
+- `Ctrl+G` 支持全文行号跳转（需勾选“全文行号”）。
+- Files larger than 500MB are automatically paged.
+- Page size options: 50 / 100 / 150 / 200 / 300 / 400 / 500 MB.
+- Pager: Previous / Next / Goto.
+- Page number follows scrolling, status bar shows global line number.
+- `Ctrl+G` supports whole-file line number jump (check "Whole file").
+
+### 4. 暗色模式增强 / Enhanced Dark Mode
+
+- 集成 [darkmodelib](https://github.com/ozone10/win32-darkmodelib)，菜单栏、工具栏、状态栏、对话框、消息框支持暗色。
+- 标题栏跟随系统暗色模式。
+- Integrated [darkmodelib](https://github.com/ozone10/win32-darkmodelib), menu bar, toolbar, status bar, dialogs, and message boxes support dark mode.
+- Title bar follows system dark mode.
+
+### 5. 中英文界面切换 / Chinese and English UI Switching
+
+- 基于 Notepad4 的本地化机制，支持中英文界面切换。
+- Based on Notepad4's localization mechanism, supports Chinese and English UI switching.
+
+## 编译 / Build
+
+本分支的编译方式和上游一致。参见 [Build Notepad4 and matepath](https://github.com/zufuliu/notepad4/wiki/Build-Notepad4)。
+
+The build process is the same as upstream. See [Build Notepad4 and matepath](https://github.com/zufuliu/notepad4/wiki/Build-Notepad4).
+
+```bash
+git clone https://github.com/xuqb1/notepad41.git
+cd notepad41/build/VisualStudio
+build_x64.bat   # 编译 64 位 / build 64-bit
+build_win32.bat # 编译 32 位 / build 32-bit
+```
+
+编译产物在 `build/bin/Release/x64/` 或 `build/bin/Release/Win32/`。
+
+Build output is in `build/bin/Release/x64/` or `build/bin/Release/Win32/`.
+
+## 仓库地址 / Repository
+
+- GitHub: https://github.com/xuqb1/notepad41
+- Gitee: https://gitee.com/null_464_8821/notepad41
+
 ## Binaries
+
 Latest development builds (artifacts in Release configuration for each compiler and platform) are available on [GitHub Actions](https://github.com/zufuliu/notepad4/actions) and [AppVeyor](https://ci.appveyor.com/project/zufuliu/notepad4). Or you can build from source, see [Wiki](https://github.com/zufuliu/notepad4/wiki/Build-Notepad4).
 
 | GitHub Actions (MSVC, Clang, GCC) | AppVeyor (MSVC, Clang) |

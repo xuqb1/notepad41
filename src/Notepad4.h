@@ -20,6 +20,8 @@
 #pragma once
 
 //==== Main Window ============================================================
+#include <vector>
+
 #define WC_NOTEPAD4 L"Notepad4"
 #define MY_APPUSERMODELID	L"Notepad4 Text Editor"
 
@@ -113,6 +115,7 @@ enum {
 	StatusItem_OvrMode,
 	StatusItem_Zoom,
 	StatusItem_DocSize,
+	StatusItem_Page,
 	StatusItem_ItemCount,
 };
 #define STATUS_HELP			(255 | SBT_NOBORDERS)
@@ -248,6 +251,7 @@ void FindIniFile() noexcept;
 bool CreateIniFile(LPCWSTR lpszIniFile) noexcept;
 
 void UpdateWindowTitle() noexcept;
+void UpdatePageBar() noexcept;
 void UpdateStatusbar() noexcept;
 void UpdateStatusBarCache(int item) noexcept;
 void UpdateToolbar() noexcept;
@@ -329,3 +333,31 @@ void	MsgSize(HWND hwnd, WPARAM wParam, LPARAM lParam) noexcept;
 void	MsgInitMenu(HWND hwnd, WPARAM wParam, LPARAM lParam) noexcept;
 LRESULT MsgCommand(HWND hwnd, WPARAM wParam, LPARAM lParam);
 LRESULT MsgNotify(HWND hwnd, WPARAM wParam, LPARAM lParam);
+
+extern HWND hwndEdit;
+extern HWND hwndEditMain;
+extern HWND hwndEdit1;
+extern HWND hwndEdit2;
+extern bool bSplitView;
+extern int g_pageSize; // 页大小（字节）
+
+struct PageInfo {
+	Sci_Line startLine;	   // 本页起始行
+	Sci_Line endLine;	   // 本页结束行（不含）
+	Sci_Position startPos; // 起始字节位置
+	Sci_Position endPos;   // 结束字节位置
+	Sci_Line lineCount;    // 本页行数
+};
+
+extern HANDLE g_hPageFile;
+extern WCHAR g_szPageFile[MAX_PATH];
+
+extern std::vector<PageInfo> g_pages;
+extern int g_currentPage;
+extern bool bPagedMode;
+extern bool bGotoWholeFile;
+
+void BuildPages(Sci_Position pageSize) noexcept;
+bool LoadPageStrict(int pageIndex) noexcept;
+
+#define IDC_EDIT2 0xFB06

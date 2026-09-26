@@ -255,7 +255,7 @@ enum EditReplaceAllFlag {
 };
 void	EditReplaceAll(EditFindReplace &efr) noexcept;
 void	EditReplaceAllInSelection(EditFindReplace &efr, EditReplaceAllFlag flag = EditReplaceAllFlag_None) noexcept;
-bool	EditLineNumDlg(HWND hwnd) noexcept;
+bool	EditLineNumDlg(HWND hwnd, int *line, int *col) noexcept;
 void	EditModifyLinesDlg(HWND hwnd) noexcept;
 void	EditEncloseSelectionDlg(HWND hwnd) noexcept;
 void	EditInsertTagDlg(HWND hwnd) noexcept;

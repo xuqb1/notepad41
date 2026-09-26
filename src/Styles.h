@@ -81,9 +81,24 @@ enum StyleLoadFlag {
 	StyleLoadFlag_Apply = 4,
 };
 
+//enum StyleTheme {
+//    StyleTheme_Default = 0,   // 兼容旧 ini，实际不再使用
+//    StyleTheme_Dark,
+//    StyleTheme_Max,
+//};
+//enum StyleThemeOption {
+//    StyleThemeOption_ByOS = 0,
+//    StyleThemeOption_Light,
+//    StyleThemeOption_Dark,
+//    StyleThemeOption_Max,      // 哨兵，不是合法选项
+//};
+
 extern PEDITLEXER pLexCurrent;
 extern int np2LexLangIndex;
 extern int np2StyleTheme;
+extern int np2StyleThemeOption;
+extern int np2EditorThemeOption;
+extern int np2EditorTheme;
 extern WCHAR darkStyleThemeFilePath[MAX_PATH];
 
 void	Style_ReleaseResources() noexcept;
@@ -101,6 +116,8 @@ void	Style_DetectBaseFontSize(HMONITOR hMonitor) noexcept;
 HFONT	Style_CreateCodeFont(UINT dpi) noexcept;
 void	Style_OnDPIChanged(LPCEDITLEXER pLex) noexcept;
 void	Style_OnStyleThemeChanged(int theme) noexcept;
+void	Style_OnEditorThemeChanged(int option) noexcept;
+
 void	Style_InitDefaultColor() noexcept;
 void	Style_SetLexer(PEDITLEXER pLexNew, BOOL bLexerChanged) noexcept;
 bool	Style_SetLexerFromFile(LPCWSTR lpszFile) noexcept;
@@ -156,3 +173,4 @@ int 	Style_GetLexerIconId(LPCEDITLEXER pLex, DWORD iconFlags) noexcept;
 void	Style_ConfigDlg(HWND hwnd) noexcept;
 void	Style_SelectLexerDlg(HWND hwnd, bool favorite) noexcept;
 bool	SelectCSVOptionsDlg() noexcept;
+void Style_OnStyleThemeChanged(int theme) noexcept;

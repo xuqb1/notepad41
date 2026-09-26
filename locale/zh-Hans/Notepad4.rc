@@ -460,6 +460,8 @@ BEGIN
 		MENUITEM "行号(&N)\tCtrl+Shift+N",			IDM_VIEW_LINENUMBERS
 		MENUITEM "书签边界(&M)\tCtrl+Shift+M",		IDM_VIEW_MARGIN
 		MENUITEM "修改历史标记(&H)",			IDM_VIEW_CHANGE_HISTORY_MARKER
+		MENUITEM "水平分隔",  IDM_VIEW_SPLIT_H
+    MENUITEM "垂直分隔",  IDM_VIEW_SPLIT_V
 		MENUITEM SEPARATOR
 		MENUITEM "显示代码折叠(&F)\tCtrl+Shift+Alt+F",	IDM_VIEW_SHOW_FOLDING
 		POPUP "切换折叠(&T)"
@@ -497,11 +499,18 @@ BEGIN
 		MENUITEM "常用语法高亮(&F)...",				IDM_VIEW_SCHEME_FAVORITE
 		MENUITEM SEPARATOR
 		MENUITEM "使用默认代码样式(&U)\tShift+F12",	IDM_VIEW_USEDEFAULT_CODESTYLE
-		POPUP "主题风格(&Y)"
+		POPUP "程序风格(&Y)"
 		BEGIN
-			MENUITEM "默认(&D)",					IDM_VIEW_STYLE_THEME_DEFAULT
+			MENUITEM "随系统(&D)",					IDM_VIEW_STYLE_THEME_DEFAULT
+			MENUITEM "亮色(&L)",					IDM_VIEW_STYLE_THEME_LIGHT
 			MENUITEM "暗色(&K)",					IDM_VIEW_STYLE_THEME_DARK
 		END
+		POPUP "编辑器风格"
+		BEGIN
+        MENUITEM "随程序",               IDM_VIEW_EDITOR_THEME_FOLLOW, CHECKED
+        MENUITEM "亮色",                       IDM_VIEW_EDITOR_THEME_LIGHT
+        MENUITEM "暗色",                       IDM_VIEW_EDITOR_THEME_DARK
+    END
 		MENUITEM SEPARATOR
 		POPUP "文本文件(&T)"
 		BEGIN
@@ -660,6 +669,7 @@ BEGIN
 		MENUITEM "单文件实例模式(&F)",				IDM_VIEW_SINGLEFILEINSTANCE
 		MENUITEM "文件变更通知(&C)...\tAlt+F5",		IDM_VIEW_CHANGENOTIFY
 		MENUITEM "自动保存设置(&U)...",			IDM_SET_FILE_AUTOSAVE
+		MENUITEM "大文件分页大小...", IDM_SET_BIGFILE_PAGE_SIZE
 		POPUP "Esc 键特别功能(&K)"
 		BEGIN
 			MENUITEM "无(&N)",						IDM_VIEW_NOESCFUNC
@@ -1738,6 +1748,12 @@ BEGIN
     IDS_LINKDESCRIPTION     "使用 Notepad4 编辑(&4)"
     IDS_FILTER_ALL          "所有文件(*.*)|*.*|"
     IDS_FILTER_EXE          "可执行文件(*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif)|*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif|所有文件(*.*)|*.*|"
+    IDS_PAGED_MODE_NO_SPLIT  "分页模式下不支持分屏。"
+    IDS_PAGE_PREV_TIP  "上一页"
+    IDS_PAGE_NEXT_TIP  "下一页"
+    IDS_PAGE_GOTO_TIP  "跳转"
+    IDS_LINE_OUT_OF_RANGE   "行号超出范围。"
+	IDS_LINE_IN_OTHER_PAGE  "该行在第 %d 页，请先翻到该页。"
 END
 
 STRINGTABLE
@@ -2101,6 +2117,17 @@ BEGIN
 	NP2STYLE_ChangeHistoryMarker	"修改历史标记"
 
 	NP2STYLE_Default				"默认样式"
+END
+
+IDD_PAGE_SIZE DIALOGEX 0, 0, 180, 70
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "大文件分页设置"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "分页大小:",IDC_STATIC,7,10,60,8
+    COMBOBOX        IDC_PAGE_SIZE,70,7,100,100,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    DEFPUSHBUTTON   "确定",IDOK,63,45,50,14
+    PUSHBUTTON      "取消",IDCANCEL,119,45,50,14
 END
 #endif // NP2_ENABLE_LOCALIZE_STYLE_NAME
 

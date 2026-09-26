@@ -14,6 +14,8 @@
 #include "Helpers.h"
 #include "DarkMode.h"
 #include "Dialogs.h"
+#include "Styles.h"
+#include "Darkmodelib.h"
 
 namespace { // DialogHook
 
@@ -83,6 +85,9 @@ void DarkMode_Cleanup() noexcept {
 
 NP2_noinline
 void DarkMode_InitDialog(HWND hwnd, DWORD_PTR dwRefData) noexcept {
+	if (np2StyleTheme == StyleTheme_Dark) {
+		dmlib::setDarkWndNotifySafe(hwnd);
+	}
 	if (dwRefData >= DialogRefData_DefaultPosition) {
 		return;
 	}

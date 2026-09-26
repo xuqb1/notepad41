@@ -4,6 +4,12 @@
 bin
 build/bin
 build/temp*
+build/obj/
+build/obj-demo/
+build/obj-demo-dll/
+build/demo/
+build/dll/
+build/lib/
 build/*.zip
 build/CodeLite/*.mk
 build/CodeLite/*.txt
@@ -15,6 +21,8 @@ scintilla/scripts/*.html
 scintilla/scripts/*.json
 scintilla/scripts/*.txt
 compile_commands.json
+testfile/
+testfiles/
 *.suo
 *.sdf
 *.user
