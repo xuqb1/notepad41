@@ -1000,8 +1000,15 @@ static INT_PTR CALLBACK FileMRUDlgProc(HWND hwnd, UINT umsg, WPARAM wParam, LPAR
 
 			for (int i = 0; i < mruFile.iSize; i++) {
 				LPWSTR path = mruFile.pszItems[i];
-				lvi.iItem = i;
+				LPCWSTR entry = mruFile.pszItems[i];
+				/*lvi.iItem = i;
 				lvi.pszText = path;
+				ListView_InsertItem(hwndLV, &lvi);*/
+				WCHAR szPath[MAX_PATH];
+				int l=0,c=0;
+				ParseMRUEntry(entry, szPath, COUNTOF(szPath), &l, &c);
+				lvi.iItem = i;
+				lvi.pszText = szPath;
 				ListView_InsertItem(hwndLV, &lvi);
 			}
 
@@ -1032,24 +1039,27 @@ static INT_PTR CALLBACK FileMRUDlgProc(HWND hwnd, UINT umsg, WPARAM wParam, LPAR
 
 				PathUnquoteSpaces(tch);
 
-				if (!PathIsFile(tch)) {
+				// 剥掉 ?line?col，得到纯路径
+				WCHAR szPath[MAX_PATH];
+				int l=0,c=0;
+				ParseMRUEntry(tch, szPath, COUNTOF(szPath), &l, &c);
+
+				if (!PathIsFile(szPath)) {
 					// Ask...
 					if (IDYES == MsgBoxWarn(MB_YESNO, IDS_ERR_MRUDLG)) {
-						mruFile.DeleteFileFromStore(tch, lvi.iItem);
+						mruFile.DeleteFileFromStore(szPath, lvi.iItem);
 
 						// must use recreate the list, index might change...
-						//ListView_DeleteItem(hwndLV, lvi.iItem);
 						SendWMCommand(hwnd, IDC_FILEMRU_UPDATE_VIEW);
 
 						EnableWindow(GetDlgItem(hwnd, IDOK), ListView_GetSelectedCount(hwndLV));
 					}
 				} else {
-					lstrcpy(AsPointer<LPWSTR>(GetWindowLongPtr(hwnd, DWLP_USER)), tch);
+					lstrcpy(AsPointer<LPWSTR>(GetWindowLongPtr(hwnd, DWLP_USER)), szPath);
 					EndDialog(hwnd, IDOK);
 				}
 			}
-		}
-		break;
+		} break;
 
 		case IDCANCEL:
 			EndDialog(hwnd, IDCANCEL);

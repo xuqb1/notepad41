@@ -631,6 +631,8 @@ inline bool HexStrToInt(LPCWSTR str, int *value) noexcept {
 UINT ParseCommaList(LPCWSTR str, int result[], UINT count) noexcept;
 UINT ParseCommaList64(LPCWSTR str, int64_t result[], UINT count) noexcept;
 LPCSTR GetCurrentLogTime() noexcept;
+void ParseMRUEntry(LPCWSTR lpszEntry, LPWSTR lpszPath, int cchPath,
+	int *line, int *col) noexcept;
 
 struct StopWatch {
 	LARGE_INTEGER freq; // not changed after system boot

@@ -37,6 +37,7 @@
 #include "VectorISA.h"
 #include "GraphicUtils.h"
 #include "resource.h"
+#include "Scintilla.h"
 
 LPCSTR GetCurrentLogTime() noexcept {
 	static char buf[16];
@@ -2339,6 +2340,45 @@ void ComboBox_AddStringA2W(UINT uCP, HWND hwnd, LPCSTR lpString) noexcept {
 	}
 }
 
+
+
+// 从 "path?line?col" 解析出 path、line、col（0-based）
+void ParseMRUEntry(LPCWSTR lpszEntry, LPWSTR lpszPath, int cchPath,
+	int *line, int *col) noexcept {
+	lstrcpyn(lpszPath, lpszEntry, cchPath);
+	*line = 1;
+	*col = 1;
+	WCHAR dbg[128];
+	wsprintf(dbg, L"ParseMRUEntry lpszPath=%s\n", lpszPath);
+	OutputDebugString(dbg);
+	LPWSTR p1 = StrRChr(lpszPath, nullptr, L'?');
+	if (p1 == nullptr) {
+		wsprintf(dbg, L"ParseMRUEntry not found first ?\n");
+		OutputDebugString(dbg);
+		return;
+	}
+		
+	*p1 = L'\0';
+	LPWSTR p2 = StrRChr(lpszPath, nullptr, L'?');
+	if (p2 == nullptr) {
+		lstrcpyn(lpszPath, lpszEntry, cchPath);
+		wsprintf(dbg, L"ParseMRUEntry not found second ?\n");
+		OutputDebugString(dbg);
+		return;
+	}
+	*p2 = L'\0';
+
+	int l = _wtoi(p2 + 1);
+	int c = _wtoi(p1 + 1);
+	if (l <= 0)
+		l = 1;
+	if (c <= 0)
+		c = 1;
+	*line = l;
+	*col = c;
+	wsprintf(dbg, L"ParseMRUEntry result: %d?%d\n", l, c);
+	OutputDebugString(dbg);
+}
 //=============================================================================
 //
 // MRU functions
@@ -2409,9 +2449,12 @@ void MRUList::DeleteFileFromStore(LPCWSTR pszFile, int fileIndex) noexcept {
 	mruStore.Init(szRegKey, capacity, iFlags, true);
 	int deleted = 0;
 
-	for (int index = 0; index < mruStore.iSize; ) {
-		LPCWSTR path = mruStore.pszItems[index];
-		if (PathEqual(path, pszFile)) {
+	for (int index = 0; index < mruStore.iSize;) {
+		LPCWSTR entry = mruStore.pszItems[index];
+		WCHAR szPath[MAX_PATH];
+		int l=0,c=0;
+		ParseMRUEntry(entry, szPath, COUNTOF(szPath), &l, &c);
+		if (PathEqual(szPath, pszFile)) {
 			deleted += 1;
 			NP2HeapFree(mruStore.pszItems[index]);
 			mruStore.pszItems[index] = nullptr;
@@ -2449,7 +2492,10 @@ void MRUList::Load() noexcept {
 	IniSectionParser section;
 	const DWORD cchIniSection = MAX_MRU_ITEM_SIZE * capacity;
 
-	WCHAR * const pIniSectionBuf = section.Init(capacity, cchIniSection);
+	OutputDebugString(L"--- MRUList::Load ---\n");
+	OutputDebugString(szRegKey);
+
+	WCHAR *const pIniSectionBuf = section.Init(capacity, cchIniSection);
 	LoadIniSection(szRegKey, pIniSectionBuf, cchIniSection);
 	section.ParseArray(pIniSectionBuf, iFlags & MRUFlags_QuoteValue);
 	UINT n = 0;
@@ -2457,13 +2503,42 @@ void MRUList::Load() noexcept {
 	for (UINT i = 0; i < section.count; i++) {
 		LPCWSTR tchItem = section.nodeList[i].value;
 		if (StrNotEmpty(tchItem)) {
+			// 先剥掉 ?line?col
+			WCHAR szPath[MAX_PATH];
+			WCHAR szPos[32] = L"";
+			lstrcpyn(szPath, tchItem, COUNTOF(szPath));
+			WCHAR dbg[512];
+			wsprintf(dbg, L"Load: szPath=%s isRelative=%d\n", szPath, PathIsRelative(szPath));
+			OutputDebugString(dbg);
+			LPWSTR p = StrRChr(szPath, nullptr, L'?');
+			if (p != nullptr) {
+				// 检查是否有两个 ?
+				//LPWSTR p2 = StrRChr(szPath, p - 1, L'?');
+				LPWSTR p2 = StrRChr(szPath, p, L'?');
+				if (p2 != nullptr) {
+					lstrcpyn(szPos, p2, COUNTOF(szPos));
+					*p2 = L'\0';
+					WCHAR dbg[512];
+					wsprintf(dbg, L"Load: after truncate szPath=%s szPos=%s\n", szPath, szPos);
+					OutputDebugString(dbg);
+				}
+			}
+
+			// 转绝对路径
 			WCHAR tchPath[MAX_PATH];
 			tchPath[0] = L'\0';
-			if ((iFlags & MRUFlags_FilePath) != 0 && PathIsRelative(tchItem)) {
-				PathAbsoluteFromApp(tchItem, tchPath);
-				tchItem = tchPath;
+			if ((iFlags & MRUFlags_FilePath) != 0 && PathIsRelative(szPath)) {
+				PathAbsoluteFromApp(szPath, tchPath);
+			} else {
+				lstrcpy(tchPath, szPath);
 			}
-			pszItems[n++] = HeapStrDupW(tchItem);
+			WCHAR dbg2[512];
+			wsprintf(dbg2, L"Load: after PathAbsoluteFromApp tchPath=%s", tchPath);
+			OutputDebugString(dbg2);
+
+			// 拼回 ?line?col
+			lstrcat(tchPath, szPos);
+			pszItems[n++] = HeapStrDupW(tchPath);
 		}
 	}
 
@@ -2476,6 +2551,9 @@ void MRUList::Save() const noexcept {
 		IniClearSection(szRegKey);
 		return;
 	}
+	WCHAR dbg[512];
+	
+
 
 	WCHAR tchName[16];
 	WCHAR *pIniSectionBuf = static_cast<WCHAR *>(NP2HeapAlloc(sizeof(WCHAR) * MAX_MRU_ITEM_SIZE * capacity));
@@ -2483,17 +2561,47 @@ void MRUList::Save() const noexcept {
 
 	for (int i = 0; i < iSize; i++) {
 		LPCWSTR tchItem = pszItems[i];
+		wsprintf(dbg, L"Load: tchItem=%s\n", tchItem);
+		OutputDebugString(dbg);
 		if (StrNotEmpty(tchItem)) {
 			wsprintf(tchName, L"%02i", i + 1);
 			if (iFlags & MRUFlags_QuoteValue) {
 				section.SetQuotedString(tchName, tchItem);
 			} else {
+				// 先剥掉 ?line?col
+				WCHAR szPath[MAX_PATH];
+				WCHAR szPos[32] = L"";
+				lstrcpyn(szPath, tchItem, COUNTOF(szPath));
+				LPWSTR p = StrRChr(szPath, nullptr, L'?');
+				if (p != nullptr) {
+					//LPWSTR p2 = StrRChr(szPath, p - 1, L'?');
+					LPWSTR p2 = StrRChr(szPath, p, L'?');
+					if (p2 != nullptr) {
+						lstrcpyn(szPos, p2, COUNTOF(szPos));
+						*p2 = L'\0';
+					}
+				}
+				wsprintf(dbg, L"Load: szPath=%s szPos=%s\n", szPath, szPos);
+				OutputDebugString(dbg);
+
+				// 转相对路径
 				WCHAR tchPath[MAX_PATH];
 				if (iFlags & MRUFlags_RelativePath) {
-					PathRelativeToApp(tchItem, tchPath, 0, iFlags & MRUFlags_PortableMyDocs);
-					tchItem = tchPath;
+					PathRelativeToApp(szPath, tchPath, 0, iFlags & MRUFlags_PortableMyDocs);
+				} else {
+					lstrcpy(tchPath, szPath);
 				}
-				section.SetString(tchName, tchItem);
+				wsprintf(dbg, L"Load: tchPath=%s\n", tchPath);
+				OutputDebugString(dbg);
+
+				// 拼回 ?line?col
+				lstrcat(tchPath, szPos);
+				section.SetString(tchName, tchPath);
+				//lstrcat(tchPath, szPos);
+				wsprintf(dbg, L"Load: final=%s\n", tchPath);
+				OutputDebugString(dbg);
+
+				//pszItems[n++] = HeapStrDupW(tchPath);
 			}
 		}
 	}

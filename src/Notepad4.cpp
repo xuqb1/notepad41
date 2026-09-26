@@ -60,7 +60,7 @@ static HWND hwndToolbar;
 static HWND hwndReBar;
 static HMONITOR hCurrentMonitor = nullptr;
 
-HWND	hwndEdit;
+HWND	hwndEdit = nullptr;
 HWND	hwndMain;
 static HMENU hmenuMain;
 
@@ -89,6 +89,11 @@ std::vector<PageInfo> g_pages;
 int g_currentPage = 0;
 bool bPagedMode = false;
 bool bGotoWholeFile = true; // 默认勾选
+static int g_lastPage = 0;
+static Sci_Line g_lastPageLine = 0;
+static Sci_Position g_lastPageCol = 0;
+static WCHAR g_lastPageFile[MAX_PATH] = L"";
+
 //static HWND hwndPageBar = nullptr; // 分页器容器
 static HWND hwndPagePrev = nullptr;
 static HWND hwndPageNext = nullptr;
@@ -1180,6 +1185,10 @@ static inline bool IsFileStartsWithDotLog() noexcept {
 #endif
 
 static void SaveAllSettings(bool destroy) noexcept {
+  // 保存当前文件的位置
+  if (StrNotEmpty(szCurFile)) {
+	SaveFilePositionToMRU(szCurFile);
+  }
   SaveSettings(false);
   mruFile.MergeSave(bSaveRecentFiles, destroy);
   mruFind.MergeSave(bSaveFindReplace, destroy);
@@ -5383,18 +5392,21 @@ LRESULT MsgCommand(HWND hwnd, WPARAM wParam, LPARAM lParam) {
     }
 
     const UINT index = LOWORD(wParam) - IDM_RECENT_HISTORY_START;
-    if (index < MRU_MAXITEMS) {
-      LPCWSTR path = mruFile.pszItems[index];
-      if (path) {
-        if (!PathIsFile(path)) {
-          if (IDYES == MsgBoxWarn(MB_YESNO, IDS_ERR_MRUDLG)) {
-            mruFile.DeleteFileFromStore(path, index);
-          }
-        } else if (FileSave(FileSaveFlag_Ask)) {
-          FileLoad(FileLoadFlag_DontSave, path);
-        }
-      }
-    }
+	if (index < MRU_MAXITEMS) {
+		LPCWSTR entry = mruFile.pszItems[index];
+		if (entry) {
+			WCHAR szPath[MAX_PATH];
+			int l=0,c=0;
+			ParseMRUEntry(entry, szPath, COUNTOF(szPath), &l, &c);
+			if (!PathIsFile(szPath)) {
+				if (IDYES == MsgBoxWarn(MB_YESNO, IDS_ERR_MRUDLG)) {
+					mruFile.DeleteFileFromStore(szPath, index);
+				}
+			} else if (FileSave(FileSaveFlag_Ask)) {
+				FileLoad(FileLoadFlag_DontSave, szPath);
+			}
+		}
+	}
   } break;
   }
 
@@ -5755,44 +5767,47 @@ LRESULT MsgNotify(HWND hwnd, WPARAM wParam, LPARAM lParam) {
       return FALSE;
 
     case TBN_DROPDOWN: {
-      LPTBNOTIFY lpTbNotify = AsPointer<LPTBNOTIFY>(lParam);
-      HMENU hmenu = nullptr;
-      HMENU subMenu = nullptr;
-      if (lpTbNotify->iItem == IDT_FILE_OPEN) {
-        static_assert(IDM_RECENT_HISTORY_START + MRU_MAXITEMS == IDM_RECENT_HISTORY_END);
-        if (mruFile.iSize <= 0) {
-          return TBDDRET_TREATPRESSED;
-        }
-        hmenu = subMenu = CreatePopupMenu();
-        bitmapCache.StartUse();
-        MENUITEMINFO mii;
-        mii.cbSize = sizeof(MENUITEMINFO);
-        mii.fMask = MIIM_ID | MIIM_STRING | MIIM_BITMAP;
-        const int count = min(mruFile.iSize, MRU_MAXITEMS);
-        for (int i = 0; i < count; i++) {
-          LPCWSTR path = mruFile.pszItems[i];
-          HBITMAP hbmp = bitmapCache.Get(path);
-          mii.wID = i + IDM_RECENT_HISTORY_START;
-          mii.dwTypeData = const_cast<LPWSTR>(path);
-          mii.hbmpItem = hbmp;
-          InsertMenuItem(subMenu, i, TRUE, &mii);
-        }
-      } else {
-        hmenu = LoadMenu(g_hInstance, MAKEINTRESOURCE(IDR_POPUPMENU));
-        subMenu = GetSubMenu(hmenu, IDP_POPUP_SUBMENU_FOLD);
-      }
-      TPMPARAMS tpm;
-      tpm.cbSize = sizeof(TPMPARAMS);
-      SendMessage(hwndToolbar, TB_GETRECT, lpTbNotify->iItem, AsInteger<LPARAM>(&tpm.rcExclude));
-      MapWindowPoints(hwndToolbar, HWND_DESKTOP, reinterpret_cast<LPPOINT>(&tpm.rcExclude), 2);
-      TrackPopupMenuEx(subMenu,
-              TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_VERTICAL,
-              tpm.rcExclude.left, tpm.rcExclude.bottom, hwnd, &tpm);
-      DestroyMenu(hmenu);
-    }
-    return FALSE;
-    }
-    break;
+		LPTBNOTIFY lpTbNotify = AsPointer<LPTBNOTIFY>(lParam);
+		HMENU hmenu = nullptr;
+		HMENU subMenu = nullptr;
+		if (lpTbNotify->iItem == IDT_FILE_OPEN) {
+			static_assert(IDM_RECENT_HISTORY_START + MRU_MAXITEMS == IDM_RECENT_HISTORY_END);
+			if (mruFile.iSize <= 0) {
+				return TBDDRET_TREATPRESSED;
+			}
+			hmenu = subMenu = CreatePopupMenu();
+			bitmapCache.StartUse();
+			MENUITEMINFO mii;
+			mii.cbSize = sizeof(MENUITEMINFO);
+			mii.fMask = MIIM_ID | MIIM_STRING | MIIM_BITMAP;
+			const int count = min(mruFile.iSize, MRU_MAXITEMS);
+			for (int i = 0; i < count; i++) {
+				LPCWSTR entry = mruFile.pszItems[i];
+				WCHAR szPath[MAX_PATH];
+				int l=0,c=0;
+				ParseMRUEntry(entry, szPath, COUNTOF(szPath), &l, &c);
+				HBITMAP hbmp = bitmapCache.Get(szPath);
+				mii.wID = i + IDM_RECENT_HISTORY_START;
+				mii.dwTypeData = szPath;
+				mii.hbmpItem = hbmp;
+				InsertMenuItem(subMenu, i, TRUE, &mii);
+			}
+		} else {
+			hmenu = LoadMenu(g_hInstance, MAKEINTRESOURCE(IDR_POPUPMENU));
+			subMenu = GetSubMenu(hmenu, IDP_POPUP_SUBMENU_FOLD);
+		}
+		TPMPARAMS tpm;
+		tpm.cbSize = sizeof(TPMPARAMS);
+		SendMessage(hwndToolbar, TB_GETRECT, lpTbNotify->iItem, AsInteger<LPARAM>(&tpm.rcExclude));
+		MapWindowPoints(hwndToolbar, HWND_DESKTOP, reinterpret_cast<LPPOINT>(&tpm.rcExclude), 2);
+		TrackPopupMenuEx(subMenu,
+			TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_VERTICAL,
+			tpm.rcExclude.left, tpm.rcExclude.bottom, hwnd, &tpm);
+		DestroyMenu(hmenu);
+	}
+		return FALSE;
+	}
+	break;
 
   case IDC_STATUSBAR:
     switch (pnmh->code) {
@@ -7260,11 +7275,18 @@ void UpdateStatusbar() noexcept {
   Sci_Line iLines = SciCall_GetLineCount();
 
   // 分页模式下，当前行和总行数用全局行号
-  Sci_Line displayLine = iLine;
+  /*Sci_Line displayLine = iLine;
   if (bPagedMode && g_currentPage >= 0 && g_currentPage < (int)g_pages.size()) {
 	  displayLine = g_pages[g_currentPage].startLine + iLine;
 	  iLines = g_pages.back().endLine;
+  }*/
+  Sci_Line displayLine = iLine; // 0-based
+  if (bPagedMode) {
+	  displayLine = g_pages[g_currentPage].startLine + iLine;
+	  iLines = g_pages.back().endLine;
   }
+ 
+  //FormatNumber(tchCurLine, displayLine + 1);
 
 #if 0
   StopWatch watch;
@@ -7300,9 +7322,7 @@ void UpdateStatusbar() noexcept {
 
   WCHAR tchCurLine[32];
   WCHAR tchDocLine[32];
-  //FormatNumber(tchCurLine, iLine + 1);
-  //FormatNumber(tchDocLine, iLines);
-  FormatNumber(tchCurLine, displayLine + 1);
+  FormatNumber(tchCurLine, displayLine + 1); // 0-based 转 1-based 显示
   FormatNumber(tchDocLine, iLines);
 
   WCHAR tchCurColumn[32];
@@ -7730,6 +7750,104 @@ void BuildPages(Sci_Position pageSize) noexcept {
 	}
 }
 
+// 从 "path?line?col" 解析出 path、line、col（0-based）
+//static void ParseMRUEntry(LPCWSTR lpszEntry, LPWSTR lpszPath, int cchPath,
+//	Sci_Line *line, Sci_Position *col) noexcept {
+//	lstrcpyn(lpszPath, lpszEntry, cchPath);
+//	*line = 1;
+//	*col = 1;
+//
+//	LPWSTR p1 = StrRChr(lpszPath, nullptr, L'?');
+//	if (p1 == nullptr)
+//		return;
+//	*p1 = L'\0';
+//	LPWSTR p2 = StrRChr(lpszPath, nullptr, L'?');
+//	if (p2 == nullptr) {
+//		lstrcpyn(lpszPath, lpszEntry, cchPath);
+//		return;
+//	}
+//	*p2 = L'\0';
+//
+//	int l = _wtoi(p2 + 1);
+//	int c = _wtoi(p1 + 1);
+//	if (l <= 0)
+//		l = 1;
+//	if (c <= 0)
+//		c = 1;
+//	*line = l;
+//	*col = c;
+//}
+
+static bool FindFilePositionInMRU(LPCWSTR lpszFile, Sci_Line *line, Sci_Position *col) noexcept {
+	for (int i = 0; i < mruFile.iSize; i++) {
+		LPCWSTR entry = mruFile.pszItems[i];
+		if (entry == nullptr)
+			continue;
+		WCHAR szPath[MAX_PATH];
+		int l = 0, c = 0;
+		ParseMRUEntry(entry, szPath, COUNTOF(szPath), &l, &c);
+		if (PathEqual(szPath, lpszFile)) {
+			// 检查 entry 里有没有 ?
+			if (StrChr(entry, L'?') == nullptr)
+				continue;
+			*line = l;
+			*col = c;
+			return true;
+		}
+	}
+	return false;
+}
+
+static void SaveFilePositionToMRU(LPCWSTR lpszFile) noexcept {
+	if (StrIsEmpty(lpszFile))
+		return;
+	OutputDebugString(L"=== SaveFilePositionToMRU ===");
+	OutputDebugString(lpszFile);
+	const Sci_Position pos = SciCall_GetCurrentPos();
+	const Sci_Line localLine = SciCall_LineFromPosition(pos);
+	const Sci_Position col = SciCall_GetColumn(pos);
+
+	Sci_Line globalLine = localLine;
+	if (bPagedMode && g_currentPage >= 0 && g_currentPage < (int)g_pages.size()) {
+		globalLine = g_pages[g_currentPage].startLine + localLine;
+	}
+
+	// 转 1-based
+	int line = (int)globalLine + 1;
+	int c = (int)col + 1;
+	if (line <= 0)
+		line = 1;
+	if (c <= 0)
+		c = 1;
+
+	WCHAR szEntry[MAX_PATH + 32];
+	wsprintf(szEntry, L"%s?%d?%d", lpszFile, line, c);
+
+	// 删除所有同路径的条目（不管 ?line?col 是多少）
+	for (int i = 0; i < mruFile.iSize;) {
+		LPCWSTR entry = mruFile.pszItems[i];
+		if (entry == nullptr) {
+			i++;
+			continue;
+		}
+		WCHAR szPath[MAX_PATH];
+		int l, c2;
+		ParseMRUEntry(entry, szPath, COUNTOF(szPath), &l, &c2);
+		OutputDebugString(L"  entry:");
+		OutputDebugString(entry);
+		OutputDebugString(L"  path:");
+		OutputDebugString(szPath);
+		if (PathEqual(szPath, lpszFile)) {
+			mruFile.Delete(i);
+			// Delete 后，iSize 减 1，索引 i 现在是下一条，不要 i++
+		} else {
+			i++;
+		}
+	}
+
+	mruFile.Add(szEntry);
+	mruFile.Save();
+}
 
 bool LoadPageStrict(int pageIndex) noexcept {
 	if (pageIndex < 0 || pageIndex >= (int)g_pages.size())
@@ -7776,282 +7894,6 @@ bool LoadPageStrict(int pageIndex) noexcept {
 // FileLoad()
 //
 //
-bool FileLoad1(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
-  WCHAR tchPath[MAX_PATH];
-  SetStrEmpty(tchPath);
-  bool fSuccess = false;
-  bool bRestoreView = false;
-  Sci_Position iCurPos = 0;
-  Sci_Position iAnchorPos = 0;
-  Sci_Line iLine = 0;
-  Sci_Position iCol = 0;
-  Sci_Line iVisTopLine = 0;
-  Sci_Line iDocTopLine = 0;
-  int iXOffset = 0;
-  bool keepTitleExcerpt = fKeepTitleExcerpt;
-  bool keepCurrentLexer = false;
-
-
-  if (!(loadFlag & FileLoadFlag_New) && StrNotEmpty(lpszFile)) {
-    lstrcpy(tchPath, lpszFile);
-    if (lpszFile == szCurFile || PathEqual(lpszFile, szCurFile)) {
-      iCurPos = SciCall_GetCurrentPos();
-      iAnchorPos = SciCall_GetAnchor();
-      iLine = SciCall_LineFromPosition(iCurPos) + 1;
-      iCol = SciCall_GetColumn(iCurPos) + 1;
-      iVisTopLine = SciCall_GetFirstVisibleLine();
-      iDocTopLine = SciCall_DocLineFromVisible(iVisTopLine);
-      iXOffset = SciCall_GetXOffset();
-      bRestoreView = true;
-      keepTitleExcerpt = true;
-      keepCurrentLexer = true;
-      flagReadOnlyMode |= static_cast<int>(bReadOnlyMode);
-    }
-    fSuccess = true;
-  }
-  if (!(loadFlag & FileLoadFlag_DontSave)) {
-    if (!FileSave(FileSaveFlag_Ask)) {
-      return false;
-    }
-  }
-
-  if (loadFlag & FileLoadFlag_New) {
-    SetStrEmpty(szCurFile);
-    SetDlgItemText(hwndMain, IDC_FILENAME, szCurFile);
-    if (!keepTitleExcerpt) {
-      SetStrEmpty(szTitleExcerpt);
-    }
-    fvCurFile.Init(nullptr, 0);
-    EditSetEmptyText();
-    bDocumentModified = false;
-    bReadOnlyFile = false;
-    iCurrentEOLMode = GetScintillaEOLMode(iDefaultEOLMode);
-    SciCall_SetEOLMode(iCurrentEOLMode);
-    iCurrentEncoding = iDefaultEncoding;
-    iOriginalEncoding = iCurrentEncoding;
-    SciCall_SetCodePage((iCurrentEncoding == CPI_DEFAULT) ? iDefaultCodePage : SC_CP_UTF8);
-    Style_SetLexer(nullptr, true);
-    UpdateStatusBarCache(StatusItem_Encoding);
-    UpdateStatusBarCache(StatusItem_EolMode);
-    UpdateStatusBarCacheLineColumn();
-    UpdateDocumentModificationStatus();
-    UpdateStatusbar();
-
-    AutoSave_Stop(TRUE);
-    // Terminate file watching
-    if (bResetFileWatching) {
-      iFileWatchingMode = FileWatchingMode_None;
-    }
-    InstallFileWatching(true);
-    return true;
-  }
-
-  if (!fSuccess) {
-    if (!OpenFileDlg(tchPath, COUNTOF(tchPath), nullptr)) {
-      return false;
-    }
-  }
-  fSuccess = false;
-
-  WCHAR szFile[MAX_PATH];
-  SetStrEmpty(szFile);
-  LPWSTR pszFile = tchPath;
-  LPWSTR pszPath = szFile;
-  if (ExpandEnvironmentStringsEx(tchPath, szFile)) {
-    pszFile = szFile;
-    pszPath = tchPath;
-  }
-
-  if (PathIsRelative(pszFile)) {
-    PathCombine(pszPath, g_wchWorkingDirectory, pszFile);
-    wchar_t * const temp = pszFile;
-    pszFile = pszPath;
-    pszPath = temp;
-  }
-
-  if (PathCanonicalize(pszPath, pszFile)) {
-    pszFile = pszPath;
-  }
-  GetLongPathName(pszFile, pszFile, COUNTOF(szFile));
-  PathGetLnkPath(pszFile, pszFile);
-
-  EditFileIOStatus status{};
-  status.iEncoding = iCurrentEncoding;
-  status.iEOLMode = iCurrentEOLMode;
-
-  // Ask to create a new file...
-  if (!(loadFlag & FileLoadFlag_Reload) && !PathIsFile(pszFile)) {
-    const int result = flagQuietCreate ? IDYES : MsgBoxWarn(MB_YESNOCANCEL, IDS_ASK_CREATE, pszFile);
-    if (result == IDYES) {
-      HANDLE hFile = CreateFile(pszFile,
-                    GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                    nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
-      dwLastIOError = GetLastError();
-      if (hFile != INVALID_HANDLE_VALUE) {
-        fSuccess = true;
-        CloseHandle(hFile);
-        fvCurFile.Init(nullptr, 0);
-        EditSetEmptyText();
-        iCurrentEOLMode = GetScintillaEOLMode(iDefaultEOLMode);
-        SciCall_SetEOLMode(iCurrentEOLMode);
-        if (iSrcEncoding >= CPI_FIRST) {
-          iCurrentEncoding = iSrcEncoding;
-        } else {
-          iCurrentEncoding = iDefaultEncoding;
-        }
-        iOriginalEncoding = iCurrentEncoding;
-        SciCall_SetCodePage((iCurrentEncoding == CPI_DEFAULT) ? iDefaultCodePage : SC_CP_UTF8);
-        Style_SetLexer(nullptr, true);
-        bReadOnlyFile = false;
-      }
-    } else if (result == IDCANCEL) {
-      PostWMCommand(hwndMain, IDM_FILE_EXIT);
-      return false;
-    } else {
-      return false;
-    }
-  } else {
-    fSuccess = FileIO(true, pszFile, FileSaveFlag_Default, status);
-    if (fSuccess) {
-      iCurrentEncoding = status.iEncoding;
-      iCurrentEOLMode = status.iEOLMode;
-    }
-  }
-
-  if (fSuccess) {
-    lstrcpy(szCurFile, pszFile);
-    SetDlgItemText(hwndMain, IDC_FILENAME, szCurFile);
-    if (!keepTitleExcerpt) {
-      SetStrEmpty(szTitleExcerpt);
-    }
-    iOriginalEncoding = iCurrentEncoding;
-    bDocumentModified = false;
-    SciCall_SetEOLMode(iCurrentEOLMode);
-    UpdateStatusBarCache(StatusItem_Encoding);
-    UpdateStatusBarCache(StatusItem_EolMode);
-    UpdateStatusBarCacheLineColumn();
-
-    bool bUnknownFile = false;
-    if (!keepCurrentLexer) {
-      if (flagLexerSpecified) {
-        flagLexerSpecified = false;
-        if (pLexCurrent->rid == iInitialLexer) {
-          Style_SetLexer(pLexCurrent, true);
-        } else if (lpSchemeArg) {
-          Style_SetLexerFromName(szCurFile, lpSchemeArg);
-          NP2HeapFree(lpSchemeArg);
-          lpSchemeArg = nullptr;
-        } else {
-          Style_SetLexerFromID(iInitialLexer);
-        }
-      } else {
-        np2LexLangIndex = 0;
-        bUnknownFile = !Style_SetLexerFromFile(szCurFile);
-      }
-    } else {
-      UpdateLineNumberWidth();
-    }
-
-    mruFile.Add(pszFile);
-    if (flagUseSystemMRU == TripleBoolean_True) {
-      SHAddToRecentDocs(SHARD_PATHW, pszFile);
-    }
-
-    AutoSave_Stop(!(loadFlag & FileLoadFlag_Reload));
-    // Install watching of the current file
-    if (!(loadFlag & FileLoadFlag_Reload) && bResetFileWatching) {
-      iFileWatchingMode = FileWatchingMode_None;
-    }
-    InstallFileWatching(false);
-
-    if (status.bBinaryFile || pLexCurrent->iLexer == SCLEX_DIFF) {
-      // ignore auto "detected" Tab settings for binary file and diff file.
-      if (fvCurFile.mask & FV_MaskHasFileTabSettings) {
-        fvCurFile.mask &= ~FV_MaskHasFileTabSettings;
-        Style_LoadTabSettings(pLexCurrent);
-        fvCurFile.Apply();
-      }
-    }
-    // open file in read only mode
-    if (status.bBinaryFile || flagReadOnlyMode != ReadOnlyMode_None || bReadOnlyFile) {
-      bReadOnlyMode = true;
-      flagReadOnlyMode &= ReadOnlyMode_AllFile;
-      SciCall_SetReadOnly(true);
-    } else {
-#if NP2_ENABLE_DOT_LOG_FEATURE
-      if (IsFileStartsWithDotLog()) {
-        bRestoreView = true;
-        SciCall_DocumentEnd();
-        SciCall_BeginUndoAction();
-        SciCall_NewLine();
-        SendWMCommand(hwndMain, IDM_EDIT_INSERT_SHORTDATE);
-        SciCall_DocumentEnd();
-        SciCall_NewLine();
-        SciCall_EndUndoAction();
-        SciCall_DocumentEnd();
-      }
-#endif
-    }
-    if (bRestoreView) {
-      SciCall_SetSel(iAnchorPos, iCurPos);
-      const Sci_Line iCurLine = iLine - SciCall_LineFromPosition(SciCall_GetCurrentPos());
-      if (abs(iCurLine) > 5) {
-        EditJumpTo(iLine, iCol);
-      } else {
-        SciCall_EnsureVisible(iDocTopLine);
-        const Sci_Line iNewTopLine = SciCall_GetFirstVisibleLine();
-        SciCall_LineScroll(0, iVisTopLine - iNewTopLine);
-        SciCall_SetXOffset(iXOffset);
-      }
-    }
-
-    bInitDone = true;
-    //! workaround for blank statusbar after loading large file: SCN_UPDATEUI is fired after Scintilla become idle.
-    //DisableDelayedStatusBarRedraw(); // already set in MsgSize()
-    UpdateStatusbar();
-    UpdateWindowTitle();
-    // Show warning: Unicode file loaded as ANSI
-    if (status.bUnicodeErr) {
-      MsgBoxWarn(MB_OK, IDS_ERR_UNICODE);
-    }
-    // notify binary file opened in read only mode
-    if (status.bBinaryFile) {
-      ShowNotificationMessage(SC_NOTIFICATIONPOSITION_BOTTOMRIGHT, IDS_BINARY_FILE_OPENED);
-      return fSuccess;
-    }
-    // Show inconsistent line endings warning
-    if (status.bInconsistent && bWarnLineEndings) {
-      // file with unknown lexer and unknown encoding
-      bUnknownFile = bUnknownFile && (iCurrentEncoding == CPI_DEFAULT);
-      // Set default button to "No" for diff/patch and unknown file.
-      // diff/patch file may contain content from files with different line endings.
-      status.bLineEndingsDefaultNo = bUnknownFile || pLexCurrent->iLexer == SCLEX_DIFF;
-      if (WarnLineEndingDlg(hwndMain, &status)) {
-        ConvertLineEndings(status.iEOLMode);
-      }
-    }
-	// 分页判断
-	const Sci_Position fileSize = SciCall_GetLength();
-	if (fileSize > 500 * 1024 * 1024) {
-		bPagedMode = true;
-		BuildPages(g_pageSize);
-		g_currentPage = 0;
-		LoadPageStrict(0);
-	} else {
-		bPagedMode = false;
-		g_pages.clear();
-	}
-	if (bPagedMode) {
-		UpdatePageBar();
-		SendWMSize(hwndMain);
-	}
-  } else if (!status.bFileTooBig) {
-    MsgBoxLastError(MB_OK, IDS_ERR_LOADFILE, pszFile);
-  }
-
-  return fSuccess;
-}
-
 bool FileLoad(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
 	WCHAR tchPath[MAX_PATH];
 	SetStrEmpty(tchPath);
@@ -8067,6 +7909,11 @@ bool FileLoad(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
 	bool keepTitleExcerpt = fKeepTitleExcerpt;
 	bool keepCurrentLexer = false;
 
+	// 打开新文件前，保存当前文件的分页及光标位置
+	if (StrNotEmpty(szCurFile)) {
+		SaveFilePositionToMRU(szCurFile);
+	}
+
 	if (!(loadFlag & FileLoadFlag_New) && StrNotEmpty(lpszFile)) {
 		lstrcpy(tchPath, lpszFile);
 		if (lpszFile == szCurFile || PathEqual(lpszFile, szCurFile)) {
@@ -8077,7 +7924,7 @@ bool FileLoad(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
 			iVisTopLine = SciCall_GetFirstVisibleLine();
 			iDocTopLine = SciCall_DocLineFromVisible(iVisTopLine);
 			iXOffset = SciCall_GetXOffset();
-			bRestoreView = true;
+			//bRestoreView = true;
 			keepTitleExcerpt = true;
 			keepCurrentLexer = true;
 			flagReadOnlyMode |= static_cast<int>(bReadOnlyMode);
@@ -8113,7 +7960,6 @@ bool FileLoad(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
 		UpdateStatusbar();
 
 		AutoSave_Stop(TRUE);
-		// Terminate file watching
 		if (bResetFileWatching) {
 			iFileWatchingMode = FileWatchingMode_None;
 		}
@@ -8154,7 +8000,6 @@ bool FileLoad(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
 	status.iEncoding = iCurrentEncoding;
 	status.iEOLMode = iCurrentEOLMode;
 
-	// Ask to create a new file...
 	if (!(loadFlag & FileLoadFlag_Reload) && !PathIsFile(pszFile)) {
 		const int result = flagQuietCreate ? IDYES : MsgBoxWarn(MB_YESNOCANCEL, IDS_ASK_CREATE, pszFile);
 		if (result == IDYES) {
@@ -8194,6 +8039,7 @@ bool FileLoad(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
 	}
 
 	if (fSuccess) {
+		OutputDebugString(L"--- FileLoad fSuccess ---\n");
 		lstrcpy(szCurFile, pszFile);
 		SetDlgItemText(hwndMain, IDC_FILENAME, szCurFile);
 		if (!keepTitleExcerpt) {
@@ -8233,21 +8079,18 @@ bool FileLoad(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
 		}
 
 		AutoSave_Stop(!(loadFlag & FileLoadFlag_Reload));
-		// Install watching of the current file
 		if (!(loadFlag & FileLoadFlag_Reload) && bResetFileWatching) {
 			iFileWatchingMode = FileWatchingMode_None;
 		}
 		InstallFileWatching(false);
 
 		if (status.bBinaryFile || pLexCurrent->iLexer == SCLEX_DIFF) {
-			// ignore auto "detected" Tab settings for binary file and diff file.
 			if (fvCurFile.mask & FV_MaskHasFileTabSettings) {
 				fvCurFile.mask &= ~FV_MaskHasFileTabSettings;
 				Style_LoadTabSettings(pLexCurrent);
 				fvCurFile.Apply();
 			}
 		}
-		// open file in read only mode
 		if (status.bBinaryFile || flagReadOnlyMode != ReadOnlyMode_None || bReadOnlyFile) {
 			bReadOnlyMode = true;
 			flagReadOnlyMode &= ReadOnlyMode_AllFile;
@@ -8267,39 +8110,31 @@ bool FileLoad(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
 			}
 #endif
 		}
-		if (bRestoreView) {
-			SciCall_SetSel(iAnchorPos, iCurPos);
-			const Sci_Line iCurLine = iLine - SciCall_LineFromPosition(SciCall_GetCurrentPos());
-			if (abs(iCurLine) > 5) {
-				EditJumpTo(iLine, iCol);
-			} else {
-				SciCall_EnsureVisible(iDocTopLine);
-				const Sci_Line iNewTopLine = SciCall_GetFirstVisibleLine();
-				SciCall_LineScroll(0, iVisTopLine - iNewTopLine);
-				SciCall_SetXOffset(iXOffset);
-			}
-		}
+		//if (bRestoreView) {
+		//	SciCall_SetSel(iAnchorPos, iCurPos);
+		//	const Sci_Line iCurLine = iLine - SciCall_LineFromPosition(SciCall_GetCurrentPos());
+		//	if (abs(iCurLine) > 5) {
+		//		EditJumpTo(iLine, iCol);
+		//	} else {
+		//		SciCall_EnsureVisible(iDocTopLine);
+		//		const Sci_Line iNewTopLine = SciCall_GetFirstVisibleLine();
+		//		SciCall_LineScroll(0, iVisTopLine - iNewTopLine);
+		//		SciCall_SetXOffset(iXOffset);
+		//	}
+		//}
 
 		bInitDone = true;
-		//! workaround for blank statusbar after loading large file: SCN_UPDATEUI is fired after Scintilla become idle.
-		// DisableDelayedStatusBarRedraw(); // already set in MsgSize()
 		UpdateStatusbar();
 		UpdateWindowTitle();
-		// Show warning: Unicode file loaded as ANSI
 		if (status.bUnicodeErr) {
 			MsgBoxWarn(MB_OK, IDS_ERR_UNICODE);
 		}
-		// notify binary file opened in read only mode
 		if (status.bBinaryFile) {
 			ShowNotificationMessage(SC_NOTIFICATIONPOSITION_BOTTOMRIGHT, IDS_BINARY_FILE_OPENED);
 			return fSuccess;
 		}
-		// Show inconsistent line endings warning
 		if (status.bInconsistent && bWarnLineEndings) {
-			// file with unknown lexer and unknown encoding
 			bUnknownFile = bUnknownFile && (iCurrentEncoding == CPI_DEFAULT);
-			// Set default button to "No" for diff/patch and unknown file.
-			// diff/patch file may contain content from files with different line endings.
 			status.bLineEndingsDefaultNo = bUnknownFile || pLexCurrent->iLexer == SCLEX_DIFF;
 			if (WarnLineEndingDlg(hwndMain, &status)) {
 				ConvertLineEndings(status.iEOLMode);
@@ -8314,32 +8149,103 @@ bool FileLoad(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
 				CloseHandle(g_hPageFile);
 				g_hPageFile = INVALID_HANDLE_VALUE;
 			}
-			// 保存文件路径，打开句柄
 			lstrcpy(g_szPageFile, szCurFile);
 			g_hPageFile = CreateFile(szCurFile, GENERIC_READ, FILE_SHARE_READ,
 				nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 			if (g_hPageFile != INVALID_HANDLE_VALUE) {
 				bPagedMode = true;
 				BuildPages(g_pageSize);
-				g_currentPage = 0;
-				// 分页模式只读
 				SciCall_SetReadOnly(true);
-				// 加载第一页
-				LoadPageStrict(0);
+
+				// 从 MRU 找保存的位置（1-based）
+				Sci_Line savedLine = 1;
+				Sci_Position savedCol = 1;
+				FindFilePositionInMRU(szCurFile, &savedLine, &savedCol);
+
+				// 总行数（0-based）
+				const Sci_Line totalLines = g_pages.back().endLine;
+
+				// 行号范围检查（1-based）
+				if (savedLine <= 0 || savedLine > totalLines) {
+					savedLine = 1;
+					savedCol = 1;
+				}
+
+				// 找 savedLine 在哪一页
+				int page = 0;
+				for (int i = 0; i < (int)g_pages.size(); i++) {
+					if (savedLine >= g_pages[i].startLine + 1 && savedLine <= g_pages[i].endLine) {
+						page = i;
+						break;
+					}
+				}
+
+				g_currentPage = page;
+				LoadPageStrict(page);
 				UpdatePageBar();
+
+				// 页内行号（1-based）
+				const Sci_Line localLine = savedLine - g_pages[page].startLine;
+
+				// 列号范围检查
+				const Sci_Position lineStart = SciCall_PositionFromLine(localLine - 1);
+				const Sci_Position lineEnd = SciCall_GetLineEndPosition(localLine - 1);
+				const Sci_Position lineLen = lineEnd - lineStart;
+				if (savedCol > lineLen + 1) {
+					savedCol = lineLen + 1;
+				}
+
+				// 跳转（EditJumpTo 是 1-based）
+				EditJumpTo(localLine, savedCol);
 				SendWMSize(hwndMain);
 			} else {
 				bPagedMode = false;
 				g_pages.clear();
 			}
 		} else {
+
 			bPagedMode = false;
 			g_pages.clear();
-			// 关闭旧句柄
 			if (g_hPageFile != INVALID_HANDLE_VALUE) {
 				CloseHandle(g_hPageFile);
 				g_hPageFile = INVALID_HANDLE_VALUE;
 			}
+
+			// 不分页时，从 MRU 恢复位置
+			OutputDebugString(L"--- small file restore ---\n");
+			Sci_Line savedLine = 1;
+			Sci_Position savedCol = 1;
+			WCHAR dbg[256];
+			wsprintf(dbg, L"before FindFilePositionInMRU: pszFile=%s szCurFile=%s\n", pszFile, szCurFile);
+			OutputDebugString(dbg);
+			if (FindFilePositionInMRU(pszFile, &savedLine, &savedCol)) {
+				//WCHAR dbg[128];
+				wsprintf(dbg, L"found position: line=%ld col=%ld\n", savedLine, savedCol);
+				OutputDebugString(dbg);
+				const Sci_Line totalLines = SciCall_GetLineCount();
+				if (savedLine <= 0 || savedLine > totalLines) {
+					savedLine = 1;
+					savedCol = 1;
+				}
+				const Sci_Position lineStart = SciCall_PositionFromLine(savedLine - 1);
+				const Sci_Position lineEnd = SciCall_GetLineEndPosition(savedLine - 1);
+				const Sci_Position lineLen = lineEnd - lineStart;
+				if (savedCol > lineLen + 1) {
+					savedCol = lineLen + 1;
+				}
+				EditJumpTo(savedLine, savedCol);
+				// 检查跳转后的位置
+				const Sci_Position pos = SciCall_GetCurrentPos();
+				const Sci_Line line = SciCall_LineFromPosition(pos);
+				const Sci_Line topLine = SciCall_GetFirstVisibleLine();
+				
+				wsprintf(dbg, L"after jump: line=%ld top=%ld\n", line,topLine);
+				OutputDebugString(dbg);
+			}
+			else {
+				OutputDebugString(L"    not found\n");
+			}
+			SendWMSize(hwndMain);
 		}
 	} else if (!status.bFileTooBig) {
 		MsgBoxLastError(MB_OK, IDS_ERR_LOADFILE, pszFile);
@@ -8347,6 +8253,7 @@ bool FileLoad(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
 
 	return fSuccess;
 }
+
 //=============================================================================
 //
 // FileSave()

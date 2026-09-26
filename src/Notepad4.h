@@ -333,6 +333,7 @@ void	MsgSize(HWND hwnd, WPARAM wParam, LPARAM lParam) noexcept;
 void	MsgInitMenu(HWND hwnd, WPARAM wParam, LPARAM lParam) noexcept;
 LRESULT MsgCommand(HWND hwnd, WPARAM wParam, LPARAM lParam);
 LRESULT MsgNotify(HWND hwnd, WPARAM wParam, LPARAM lParam);
+static void SaveFilePositionToMRU(LPCWSTR lpszFile) noexcept;
 
 extern HWND hwndEdit;
 extern HWND hwndEditMain;

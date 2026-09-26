@@ -40,3 +40,4 @@ testfiles/
 *.plist
 *.orig
 *.log
+"structure.txt" 
