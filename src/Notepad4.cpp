@@ -94,6 +94,13 @@ static Sci_Line g_lastPageLine = 0;
 static Sci_Position g_lastPageCol = 0;
 static WCHAR g_lastPageFile[MAX_PATH] = L"";
 
+#define OVERLAP_BYTES (1024 * 1024) // 重叠区 1MB
+
+static Sci_Line g_currentPageStartLine = 0; // 当前页在文档里的起始行
+static Sci_Line g_currentPageEndLine = 0;	// 当前页在文档里的结束行
+static bool g_inPageLoad = false;			// 保护整个翻页过程（含 SetFirstVisibleLine/GotoPos）
+static Sci_Line g_lastKnownTopLine = -1;	// 上次 UPDATEUI 时的 topLine，用于识别真实滚动
+
 //static HWND hwndPageBar = nullptr; // 分页器容器
 static HWND hwndPagePrev = nullptr;
 static HWND hwndPageNext = nullptr;
@@ -5081,46 +5088,25 @@ LRESULT MsgCommand(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 		  IniSetInt(INI_SECTION_NAME_SETTINGS, L"PageSize", g_pageSize / (1024 * 1024));
 	  }
 	  break;
-  //case IDM_PAGE_PREV:
-	 // if (bPagedMode && g_currentPage > 0) {
-		//  LoadPageStrict(--g_currentPage);
-	 // }
-	 // break;
-  //case IDM_PAGE_NEXT:
-	 // if (bPagedMode && g_currentPage + 1 < static_cast<int>(g_pages.size())) {
-		//  LoadPageStrict(++g_currentPage);
-	 // }
-	 // break;
   case IDC_PAGE_PREV:
 	  if (bPagedMode && g_currentPage > 0) {
-		  LoadPageStrict(--g_currentPage);
-		  UpdatePageBar();
+		  SwitchToPage(g_currentPage - 1, false); // 对齐开头
 	  }
 	  break;
+
   case IDC_PAGE_NEXT:
 	  if (bPagedMode && g_currentPage + 1 < (int)g_pages.size()) {
-		  LoadPageStrict(++g_currentPage);
-		  UpdatePageBar();
+		  SwitchToPage(g_currentPage + 1, false); // 对齐开头
 	  }
 	  break;
+
   case IDC_PAGE_GOTO: {
 	  if (bPagedMode) {
 		  WCHAR szText[32];
 		  GetWindowText(hwndPageEdit, szText, COUNTOF(szText));
 		  int page = _wtoi(szText);
-		  if (page > (int)g_pages.size()) {
-			  page = (int)g_pages.size();
-			  wsprintf(szText, L"%d", page);
-			  SetWindowText(hwndPageEdit, szText);
-		  }
-		  if (page <= 0) {
-			  page = 1;
-			  wsprintf(szText, L"%d", page);
-			  SetWindowText(hwndPageEdit, szText);
-		  }
 		  if (page >= 1 && page <= (int)g_pages.size()) {
-			  LoadPageStrict(page - 1);
-			  UpdatePageBar();
+			  SwitchToPage(page - 1, false); // 对齐开头
 		  }
 	  }
 	  break;
@@ -5434,30 +5420,36 @@ LRESULT MsgNotify(HWND hwnd, WPARAM wParam, LPARAM lParam) {
   case IDC_EDIT2:
     switch (pnmh->code) {
     case SCN_UPDATEUI: {
-		/*if (bPagedMode) {
-			const Sci_Line topLine = SciCall_GetFirstVisibleLine();
-			const Sci_Line visibleLines = (Sci_Line)SendMessage((HWND)hwndEdit1, SCI_LINESONSCREEN, 0, 0);
-			const Sci_Line lastVisible = topLine + visibleLines;
-
-			int page = (int)g_pages.size() - 1;
-			for (int i = 0; i < (int)g_pages.size(); i++) {
-				const Sci_Line pageStart = g_pages[i].startLine;
-				const Sci_Line pageEnd = (i + 1 < (int)g_pages.size())
-											 ? g_pages[i + 1].startLine - 1
-											 : SciCall_GetLineCount() - 1;
-				if (lastVisible >= pageStart && lastVisible <= pageEnd) {
-					page = i;
-					break;
-				}
-			}
-
-			if (g_currentPage != page) {
-				g_currentPage = page;
-				UpdatePageBar();
-			}
-		}*/
 
       const unsigned updated = scn->updated;
+		// ===== 分页模式自动翻页 =====
+	  if (bPagedMode && g_currentPage >= 0 && g_currentPage < (int)g_pages.size() && !g_inPageLoad && (updated & SC_UPDATE_V_SCROLL)) {
+
+		  const Sci_Line topLine = SciCall_GetFirstVisibleLine();
+		  const Sci_Line visibleLines =
+			  (Sci_Line)SendMessage(hwndEdit, SCI_LINESONSCREEN, 0, 0);
+		  const Sci_Line totalLines = SciCall_GetLineCount();
+		  const Sci_Line bottomLine = topLine + visibleLines - 1;
+
+		  static DWORD g_lastPageSwitchTime = 0;
+		  const DWORD now = GetTickCount();
+		  const bool canSwitch = (now - g_lastPageSwitchTime > 200);
+
+		  // 向上滚翻页：新页最后一行对齐到屏幕最后一行
+		  if (topLine <= 0 && g_currentPage > 0 && canSwitch) {
+			  g_lastPageSwitchTime = now;
+			  SwitchToPage(g_currentPage - 1, true); // ← alignToEnd = true
+			  return 0;
+		  }
+
+		  // 向下滚翻页：新页第一行对齐到屏幕第一行
+		  if (bottomLine >= totalLines - 1 && g_currentPage + 1 < (int)g_pages.size() && canSwitch) {
+			  g_lastPageSwitchTime = now;
+			  SwitchToPage(g_currentPage + 1, false); // ← alignToEnd = false
+			  return 0;
+		  }
+	  }
+		// ===== 分页检测结束 =====
       if (updated & ~(SC_UPDATE_V_SCROLL | SC_UPDATE_H_SCROLL)) {
 
         UpdateToolbar();
@@ -5680,6 +5672,8 @@ LRESULT MsgNotify(HWND hwnd, WPARAM wParam, LPARAM lParam) {
       break;
 
     case SCN_SAVEPOINTREACHED:
+		if (g_inPageLoad)
+			break;
       bDocumentModified = false;
       iOriginalEncoding = iCurrentEncoding;
       UpdateDocumentModificationStatus();
@@ -5708,6 +5702,8 @@ LRESULT MsgNotify(HWND hwnd, WPARAM wParam, LPARAM lParam) {
       break;
 
     case SCN_SAVEPOINTLEFT:
+		if (g_inPageLoad)
+			break;
       bDocumentModified = true;
       UpdateDocumentModificationStatus();
       break;
@@ -7594,91 +7590,6 @@ bool FileIO(bool fLoad, LPWSTR pszFile, FileSaveFlag flag, EditFileIOStatus &sta
   return fLoad;
 }
 
-void BuildPages1(Sci_Position pageSize) noexcept {
-	//g_pages.clear();
-	//const Sci_Line totalLines = SciCall_GetLineCount();
-	Sci_Line startLine = 0;
-	Sci_Position startPos = 0;
-
-	InitScintillaHandle(hwndEdit1);
-	g_pages.clear();
-	const Sci_Line totalLines = SciCall_GetLineCount();
-	const Sci_Position totalBytes = SciCall_GetLength();
-
-	//const Sci_Position totalBytes = SciCall_GetLength();
-	Sci_Position sumBytes = 0;
-	for (Sci_Line i = 0; i < totalLines; i++) {
-		sumBytes += SciCall_GetLineLength(i) + 1;
-	}
-	WCHAR dbg[128];
-	wsprintf(dbg, L"total=%ld sum=%ld", (long long)totalBytes, (long long)sumBytes);
-	SetWindowText(hwndMain, dbg);
-
-	while (startLine < totalLines) {
-		Sci_Position accumulated = 0;
-		Sci_Line line = startLine;
-		while (line < totalLines && accumulated < pageSize) {
-			accumulated += SciCall_GetLineLength(line) + 1;
-			++line;
-		}
-		PageInfo p;
-		p.startLine = startLine;
-		p.endLine = line;
-		p.startPos = startPos;
-		p.endPos = SciCall_PositionFromLine(line);
-		g_pages.push_back(p);
-		startLine = line;
-		startPos = p.endPos;
-	}
-}
-void BuildPages2(Sci_Position pageSize) noexcept {
-	InitScintillaHandle(hwndEdit1);
-	g_pages.clear();
-	const Sci_Line totalLines = SciCall_GetLineCount();
-
-	Sci_Line startLine = 0;
-	while (startLine < totalLines) {
-		const Sci_Position startPos = SciCall_PositionFromLine(startLine);
-		const Sci_Position targetPos = startPos + pageSize;
-
-		Sci_Line lo = startLine;
-		Sci_Line hi = totalLines;
-		while (lo < hi) {
-			const Sci_Line mid = lo + (hi - lo) / 2;
-			if (SciCall_PositionFromLine(mid) <= targetPos) {
-				lo = mid + 1;
-			} else {
-				hi = mid;
-			}
-		}
-		
-		//WCHAR dbg[128];
-		//if (g_pages.size() >= 1) {
-		//	wsprintf(dbg, L"pages=%d p0=%d-%d", (int)g_pages.size(),
-		//		(int)g_pages[0].startLine, (int)g_pages[0].endLine);
-		//} else {
-		//	wsprintf(dbg, L"pages=0");
-		//}
-		//SetWindowText(hwndMain, dbg);
-
-		const Sci_Line endLine = lo;
-
-		PageInfo p;
-		p.startLine = startLine;
-		p.endLine = endLine;
-		p.startPos = startPos;
-		p.endPos = SciCall_PositionFromLine(endLine);
-		g_pages.push_back(p);
-
-		WCHAR dbg[128];
-		wsprintf(dbg, L"pages=%d last=%d-%d", (int)g_pages.size(),
-			(int)p.startLine, (int)p.endLine);
-		SetWindowText(hwndMain, dbg);
-
-		startLine = endLine;
-	}
-}
-
 void BuildPages(Sci_Position pageSize) noexcept {
 	g_pages.clear();
 	if (g_hPageFile == INVALID_HANDLE_VALUE)
@@ -7688,7 +7599,7 @@ void BuildPages(Sci_Position pageSize) noexcept {
 	GetFileSizeEx(g_hPageFile, &fileSize);
 
 	Sci_Position startPos = 0;
-	Sci_Line lineCount = 0; // 全局行号
+	Sci_Line lineCount = 0;
 
 	while (startPos < fileSize.QuadPart) {
 		Sci_Position endPos = startPos + pageSize;
@@ -7710,7 +7621,22 @@ void BuildPages(Sci_Position pageSize) noexcept {
 			}
 		}
 
-		// 数本页的换行符
+		// 前进到行边界：endPos 指向下一行开头（'\n' 之后）
+		if (endPos < fileSize.QuadPart) {
+			char c;
+			LARGE_INTEGER li;
+			DWORD read;
+			li.QuadPart = endPos;
+			SetFilePointerEx(g_hPageFile, li, nullptr, FILE_BEGIN);
+			while (endPos < fileSize.QuadPart) {
+				ReadFile(g_hPageFile, &c, 1, &read, nullptr);
+				endPos++;
+				if (c == '\n')
+					break;
+			}
+		}
+
+		// 数本页行数
 		Sci_Line pageLines = 0;
 		{
 			const Sci_Position pageBytes = endPos - startPos;
@@ -7743,40 +7669,14 @@ void BuildPages(Sci_Position pageSize) noexcept {
 		p.startLine = lineCount;
 		p.endLine = lineCount + pageLines;
 		p.lineCount = pageLines;
+		p.overlapStartPos = startPos; // 不再用
+		p.overlapEndPos = endPos;	  // 不再用
 		g_pages.push_back(p);
 
 		lineCount += pageLines;
 		startPos = endPos;
 	}
 }
-
-// 从 "path?line?col" 解析出 path、line、col（0-based）
-//static void ParseMRUEntry(LPCWSTR lpszEntry, LPWSTR lpszPath, int cchPath,
-//	Sci_Line *line, Sci_Position *col) noexcept {
-//	lstrcpyn(lpszPath, lpszEntry, cchPath);
-//	*line = 1;
-//	*col = 1;
-//
-//	LPWSTR p1 = StrRChr(lpszPath, nullptr, L'?');
-//	if (p1 == nullptr)
-//		return;
-//	*p1 = L'\0';
-//	LPWSTR p2 = StrRChr(lpszPath, nullptr, L'?');
-//	if (p2 == nullptr) {
-//		lstrcpyn(lpszPath, lpszEntry, cchPath);
-//		return;
-//	}
-//	*p2 = L'\0';
-//
-//	int l = _wtoi(p2 + 1);
-//	int c = _wtoi(p1 + 1);
-//	if (l <= 0)
-//		l = 1;
-//	if (c <= 0)
-//		c = 1;
-//	*line = l;
-//	*col = c;
-//}
 
 static bool FindFilePositionInMRU(LPCWSTR lpszFile, Sci_Line *line, Sci_Position *col) noexcept {
 	for (int i = 0; i < mruFile.iSize; i++) {
@@ -7849,6 +7749,17 @@ static void SaveFilePositionToMRU(LPCWSTR lpszFile) noexcept {
 	mruFile.Save();
 }
 
+// 防止翻页过程中 SCN_UPDATEUI 递归触发
+//static bool g_inPageLoad = false;
+
+// 翻页时保存/恢复视图所需的信息
+struct PageViewState {
+	Sci_Line globalTopLine;	   // 可见区域顶部对应的全局行号
+	Sci_Line globalCursorLine; // 光标所在全局行号
+	Sci_Position cursorCol;	   // 光标列
+	int xOffset;			   // 水平滚动偏移
+};
+
 bool LoadPageStrict(int pageIndex) noexcept {
 	if (pageIndex < 0 || pageIndex >= (int)g_pages.size())
 		return false;
@@ -7876,17 +7787,233 @@ bool LoadPageStrict(int pageIndex) noexcept {
 	const int eol = SciCall_GetEOLMode();
 
 	InitScintillaHandle(hwndEdit1);
-	SciCall_SetReadOnly(false); // ← 临时取消只读
+
+	SciCall_SetReadOnly(false);
 	SciCall_ClearAll();
 	SciCall_SetCodePage(cp);
 	SciCall_SetEOLMode(eol);
 	SciCall_AddText(bytesRead, buffer);
-	SciCall_SetReadOnly(true); // ← 恢复只读
+	SciCall_SetReadOnly(true);
 	SciCall_SetSavePoint();
 
 	NP2HeapFree(buffer);
+
 	g_currentPage = pageIndex;
+	// 本页正式内容就是整个缓冲区，所以：
+	g_currentPageStartLine = 0;
+	g_currentPageEndLine = p.lineCount - 1; // 最后一行行号
+	if (g_currentPageEndLine < 0)
+		g_currentPageEndLine = 0;
+
+	g_lastKnownTopLine = -1;
 	return true;
+}
+
+// 翻页并定位视图
+// direction: -1 = 向上翻（上一页），+1 = 向下翻（下一页）
+static void SwitchToPage1(int newPage, int direction) noexcept {
+	if (newPage < 0 || newPage >= (int)g_pages.size())
+		return;
+	if (newPage == g_currentPage)
+		return;
+	if (g_inPageLoad)
+		return;
+
+	g_inPageLoad = true;
+
+	const Sci_Position oldPos = SciCall_GetCurrentPos();
+	const Sci_Line oldLocalLine = SciCall_LineFromPosition(oldPos);
+	const Sci_Line oldGlobalLine =
+		g_pages[g_currentPage].startLine + oldLocalLine;
+	const Sci_Position oldCol = SciCall_GetColumn(oldPos);
+	const int oldXOffset = SciCall_GetXOffset();
+
+	HWND hwnd = hwndEdit;
+	SendMessage(hwnd, WM_SETREDRAW, FALSE, 0);
+
+	LoadPageStrict(newPage);
+
+	const Sci_Line totalLines = SciCall_GetLineCount();
+	const Sci_Line visibleLines =
+		(Sci_Line)SendMessage(hwnd, SCI_LINESONSCREEN, 0, 0);
+
+	Sci_Line targetTopLine = 0;
+	if (direction < 0) {
+		targetTopLine = totalLines - visibleLines;
+		if (targetTopLine < 0)
+			targetTopLine = 0;
+	} else {
+		targetTopLine = 0;
+	}
+
+	// === 顺序：先 GotoPos，再 SetFirstVisibleLine ===
+	Sci_Line newLocalCursorLine = oldGlobalLine - g_pages[newPage].startLine;
+	if (newLocalCursorLine < 0)
+		newLocalCursorLine = 0;
+	if (newLocalCursorLine >= totalLines)
+		newLocalCursorLine = totalLines - 1;
+
+	if (totalLines > 0) {
+		const Sci_Position lineStart = SciCall_PositionFromLine(newLocalCursorLine);
+		const Sci_Position lineEnd = SciCall_GetLineEndPosition(newLocalCursorLine);
+		Sci_Position newPos = lineStart + oldCol;
+		if (newPos > lineEnd)
+			newPos = lineEnd;
+		SciCall_GotoPos(newPos);
+	}
+
+	if (direction < 0) {
+		// 向上翻：光标放新页最后一行
+		const Sci_Line lastLine = totalLines - 1;
+		SciCall_GotoPos(SciCall_GetLineEndPosition(lastLine));
+	} else {
+		// 向下翻：光标放新页第一行
+		SciCall_GotoPos(0);
+	}
+
+	// 光标恢复后，强制把视图顶部拉回目标行
+	SciCall_SetFirstVisibleLine(targetTopLine);
+	SciCall_SetXOffset(oldXOffset);
+	SciCall_SetFirstVisibleLine(targetTopLine); // 再设一次，覆盖 GotoPos 的延迟滚动
+
+	SendMessage(hwnd, WM_SETREDRAW, TRUE, 0);
+	RedrawWindow(hwnd, nullptr, nullptr,
+		RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+
+	UpdatePageBar();
+
+	g_lastKnownTopLine = SciCall_GetFirstVisibleLine();
+	g_inPageLoad = false;
+}
+
+// alignToEnd: true  → 新页最后一行放在屏幕最后一行
+//             false → 新页第一行放在屏幕第一行
+static void SwitchToPage(int newPage, bool alignToEnd) noexcept {
+	if (newPage < 0 || newPage >= (int)g_pages.size())
+		return;
+	if (newPage == g_currentPage)
+		return;
+	if (g_inPageLoad)
+		return;
+
+	g_inPageLoad = true;
+
+	const Sci_Position oldPos = SciCall_GetCurrentPos();
+	const Sci_Line oldLocalLine = SciCall_LineFromPosition(oldPos);
+	const Sci_Line oldGlobalLine =
+		g_pages[g_currentPage].startLine + oldLocalLine;
+	const Sci_Position oldCol = SciCall_GetColumn(oldPos);
+	const int oldXOffset = SciCall_GetXOffset();
+
+	HWND hwnd = hwndEdit;
+	SendMessage(hwnd, WM_SETREDRAW, FALSE, 0);
+
+	LoadPageStrict(newPage);
+
+	const Sci_Line totalLines = SciCall_GetLineCount();
+	const Sci_Line visibleLines =
+		(Sci_Line)SendMessage(hwnd, SCI_LINESONSCREEN, 0, 0);
+
+	// 决定视图顶部行
+	Sci_Line targetTopLine = 0;
+	if (alignToEnd) {
+		// 新页最后一行放在屏幕最后一行
+		targetTopLine = totalLines - visibleLines;
+		if (targetTopLine < 0)
+			targetTopLine = 0;
+	} else {
+		// 新页第一行放在屏幕第一行
+		targetTopLine = 0;
+	}
+
+	// 先恢复光标
+	Sci_Line newLocalCursorLine = oldGlobalLine - g_pages[newPage].startLine;
+	if (newLocalCursorLine < 0)
+		newLocalCursorLine = 0;
+	if (newLocalCursorLine >= totalLines)
+		newLocalCursorLine = totalLines - 1;
+
+	if (totalLines > 0) {
+		const Sci_Position lineStart = SciCall_PositionFromLine(newLocalCursorLine);
+		const Sci_Position lineEnd = SciCall_GetLineEndPosition(newLocalCursorLine);
+		Sci_Position newPos = lineStart + oldCol;
+		if (newPos > lineEnd)
+			newPos = lineEnd;
+		SciCall_GotoPos(newPos);
+	}
+
+	// 强制视图顶部
+	SciCall_SetFirstVisibleLine(targetTopLine);
+	SciCall_SetXOffset(oldXOffset);
+	SciCall_SetFirstVisibleLine(targetTopLine); // 覆盖 GotoPos 的延迟滚动
+
+	SendMessage(hwnd, WM_SETREDRAW, TRUE, 0);
+	RedrawWindow(hwnd, nullptr, nullptr,
+		RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+
+	UpdatePageBar();
+
+	g_inPageLoad = false;
+}
+
+// 翻页并恢复视图：newPage 目标页；globalTopLine 翻页前可见顶部对应的全局行号
+static void LoadPageAndRestoreView(int newPage, Sci_Line globalTopLine) noexcept {
+	if (newPage < 0 || newPage >= (int)g_pages.size())
+		return;
+	if (newPage == g_currentPage)
+		return;
+	if (g_inPageLoad)
+		return;
+
+	g_inPageLoad = true;
+
+	const Sci_Position oldPos = SciCall_GetCurrentPos();
+	const Sci_Line oldLocalLine = SciCall_LineFromPosition(oldPos);
+	const Sci_Line oldGlobalLine =
+		g_pages[g_currentPage].startLine + (oldLocalLine - g_currentPageStartLine);
+	const Sci_Position oldCol = SciCall_GetColumn(oldPos);
+	const int oldXOffset = SciCall_GetXOffset();
+
+	HWND hwnd = hwndEdit;
+
+	SendMessage(hwnd, WM_SETREDRAW, FALSE, 0);
+
+	LoadPageStrict(newPage);
+
+	const Sci_Line newLocalTopLine =
+		(globalTopLine - g_pages[newPage].startLine) + g_currentPageStartLine;
+	const Sci_Line totalLines = SciCall_GetLineCount();
+
+	Sci_Line clampedTop = newLocalTopLine;
+	if (clampedTop < 0)
+		clampedTop = 0;
+	if (clampedTop >= totalLines)
+		clampedTop = totalLines - 1;
+
+	SciCall_SetFirstVisibleLine(clampedTop);
+
+	const Sci_Line newLocalCursorLine =
+		(oldGlobalLine - g_pages[newPage].startLine) + g_currentPageStartLine;
+	if (newLocalCursorLine >= 0 && newLocalCursorLine < totalLines) {
+		const Sci_Position lineStart = SciCall_PositionFromLine(newLocalCursorLine);
+		const Sci_Position lineEnd = SciCall_GetLineEndPosition(newLocalCursorLine);
+		Sci_Position newPos = lineStart + oldCol;
+		if (newPos > lineEnd)
+			newPos = lineEnd;
+		SciCall_GotoPos(newPos);
+	}
+
+	SciCall_SetXOffset(oldXOffset);
+	SciCall_SetFirstVisibleLine(clampedTop);
+
+	SendMessage(hwnd, WM_SETREDRAW, TRUE, 0);
+	RedrawWindow(hwnd, nullptr, nullptr,
+		RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+
+	UpdatePageBar();
+
+	g_lastKnownTopLine = SciCall_GetFirstVisibleLine();
+	g_inPageLoad = false;
 }
 
 //=============================================================================
@@ -8144,7 +8271,6 @@ bool FileLoad(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
 		// 分页判断
 		const Sci_Position fileSize = SciCall_GetLength();
 		if (fileSize > 500 * 1024 * 1024) {
-			// 关闭旧句柄
 			if (g_hPageFile != INVALID_HANDLE_VALUE) {
 				CloseHandle(g_hPageFile);
 				g_hPageFile = INVALID_HANDLE_VALUE;
@@ -8156,22 +8282,20 @@ bool FileLoad(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
 				bPagedMode = true;
 				BuildPages(g_pageSize);
 				SciCall_SetReadOnly(true);
+				SciCall_SetWrapMode(SC_WRAP_NONE); // 分页模式关闭自动换行
 
-				// 从 MRU 找保存的位置（1-based）
+				// 从 MRU 找保存的位置
 				Sci_Line savedLine = 1;
 				Sci_Position savedCol = 1;
 				FindFilePositionInMRU(szCurFile, &savedLine, &savedCol);
 
-				// 总行数（0-based）
 				const Sci_Line totalLines = g_pages.back().endLine;
-
-				// 行号范围检查（1-based）
 				if (savedLine <= 0 || savedLine > totalLines) {
 					savedLine = 1;
 					savedCol = 1;
 				}
 
-				// 找 savedLine 在哪一页
+				// 找 savedLine 在哪一页（1-based 行号）
 				int page = 0;
 				for (int i = 0; i < (int)g_pages.size(); i++) {
 					if (savedLine >= g_pages[i].startLine + 1 && savedLine <= g_pages[i].endLine) {
@@ -8180,32 +8304,25 @@ bool FileLoad(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
 					}
 				}
 
-				g_currentPage = page;
+				g_inPageLoad = true;
 				LoadPageStrict(page);
 				UpdatePageBar();
 
 				// 页内行号（1-based）
 				const Sci_Line localLine = savedLine - g_pages[page].startLine;
-
-				// 列号范围检查
-				const Sci_Position lineStart = SciCall_PositionFromLine(localLine - 1);
-				const Sci_Position lineEnd = SciCall_GetLineEndPosition(localLine - 1);
-				const Sci_Position lineLen = lineEnd - lineStart;
-				if (savedCol > lineLen + 1) {
-					savedCol = lineLen + 1;
-				}
-
-				// 跳转（EditJumpTo 是 1-based）
 				EditJumpTo(localLine, savedCol);
+				g_inPageLoad = false;
+
+				g_lastKnownTopLine = SciCall_GetFirstVisibleLine();
 				SendWMSize(hwndMain);
 			} else {
 				bPagedMode = false;
 				g_pages.clear();
 			}
 		} else {
-
 			bPagedMode = false;
 			g_pages.clear();
+			SciCall_SetWrapMode(fWordWrapG ? iWordWrapMode : SC_WRAP_NONE);
 			if (g_hPageFile != INVALID_HANDLE_VALUE) {
 				CloseHandle(g_hPageFile);
 				g_hPageFile = INVALID_HANDLE_VALUE;

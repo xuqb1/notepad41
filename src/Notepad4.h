@@ -348,6 +348,8 @@ struct PageInfo {
 	Sci_Position startPos; // 起始字节位置
 	Sci_Position endPos;   // 结束字节位置
 	Sci_Line lineCount;    // 本页行数
+	Sci_Position overlapStartPos; // 上一页尾部 1MB 的起始位置
+	Sci_Position overlapEndPos;	  // 下一页头部 1MB 的结束位置
 };
 
 extern HANDLE g_hPageFile;
@@ -360,5 +362,7 @@ extern bool bGotoWholeFile;
 
 void BuildPages(Sci_Position pageSize) noexcept;
 bool LoadPageStrict(int pageIndex) noexcept;
+static void LoadPageAndRestoreView(int newPage, Sci_Line globalTopLine) noexcept;
+static void SwitchToPage(int newPage, bool alignToEnd) noexcept;
 
 #define IDC_EDIT2 0xFB06
