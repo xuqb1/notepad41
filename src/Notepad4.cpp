@@ -7116,7 +7116,7 @@ void LoadFlags() noexcept {
 // FindIniFile()
 //
 //
-void FindIniFile() noexcept {
+void FindIniFile1() noexcept {
   LPCWSTR tchModule = szExeRealPath;
   const size_t nameIndex = PathFindFileName(tchModule) - tchModule;
   WCHAR appData[MAX_PATH];
@@ -7180,6 +7180,18 @@ void FindIniFile() noexcept {
     }
     CloseHandle(hFile);
   }
+}
+
+void FindIniFile() noexcept {
+	LPCWSTR tchModule = szExeRealPath;
+	const size_t nameIndex = PathFindFileName(tchModule) - tchModule;
+
+	// 始终便携模式：ini 与 exe 同目录
+	memcpy(szIniFile, tchModule, nameIndex * sizeof(WCHAR));
+	lstrcpy(&szIniFile[nameIndex], L"Notepad4.ini");
+
+	// ini 不存在则什么都不做，程序使用内置默认值
+	// 不再查找 %LOCALAPPDATA%，不再复制 -default 文件，不再创建空 ini
 }
 
 bool CreateIniFile(LPCWSTR lpszIniFile) noexcept {

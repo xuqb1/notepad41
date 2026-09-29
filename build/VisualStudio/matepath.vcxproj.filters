@@ -159,9 +159,6 @@
     <ResourceCompile Include="..\..\matepath\src\matepath.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
-    <ResourceCompile Include="..\..\..\darkmodelib\src\dmlib.rc">
-      <Filter>Source Files</Filter>
-    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\matepath\res\Cross1.ico">
