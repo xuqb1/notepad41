@@ -167,7 +167,7 @@
       <BuildStlModules>false</BuildStlModules>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>comctl32.lib;shlwapi.lib;uxtheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>comctl32.lib;shlwapi.lib;dwmapi.lib;uxtheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/DEPENDENTLOADFLAG:0x800 %(AdditionalOptions)</AdditionalOptions>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -361,6 +361,7 @@
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <AdditionalOptions>/GA /wd26429 /wd26446 /wd26472 /wd26481 /wd26482 /wd26485 /wd26486 /wd26489 %(AdditionalOptions)</AdditionalOptions>
       <CallingConvention>VectorCall</CallingConvention>
+      <AdditionalIncludeDirectories>E:\project\darkmodelib\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <MinimumRequiredVersion>6.00</MinimumRequiredVersion>
@@ -463,6 +464,16 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\darkmodelib\src\Darkmodelib.cpp" />
+    <ClCompile Include="..\..\..\darkmodelib\src\DmlibColor.cpp" />
+    <ClCompile Include="..\..\..\darkmodelib\src\DmlibDpi.cpp" />
+    <ClCompile Include="..\..\..\darkmodelib\src\DmlibHook.cpp" />
+    <ClCompile Include="..\..\..\darkmodelib\src\DmlibIni.cpp" />
+    <ClCompile Include="..\..\..\darkmodelib\src\DmlibPaintHelper.cpp" />
+    <ClCompile Include="..\..\..\darkmodelib\src\DmlibSubclass.cpp" />
+    <ClCompile Include="..\..\..\darkmodelib\src\DmlibSubclassControl.cpp" />
+    <ClCompile Include="..\..\..\darkmodelib\src\DmlibSubclassWindow.cpp" />
+    <ClCompile Include="..\..\..\darkmodelib\src\DmlibWinApi.cpp" />
     <ClCompile Include="..\..\matepath\src\DarkMode.cpp" />
     <ClCompile Include="..\..\matepath\src\Dialogs.cpp" />
     <ClCompile Include="..\..\matepath\src\Dlapi.cpp" />
@@ -471,6 +482,23 @@
     <ClCompile Include="..\..\matepath\src\matepath.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\darkmodelib\include\Darkmodelib.h" />
+    <ClInclude Include="..\..\..\darkmodelib\src\DmlibColor.h" />
+    <ClInclude Include="..\..\..\darkmodelib\src\DmlibDpi.h" />
+    <ClInclude Include="..\..\..\darkmodelib\src\DmlibGlyph.h" />
+    <ClInclude Include="..\..\..\darkmodelib\src\DmlibHook.h" />
+    <ClInclude Include="..\..\..\darkmodelib\src\DmlibIni.h" />
+    <ClInclude Include="..\..\..\darkmodelib\src\DmlibPaintHelper.h" />
+    <ClInclude Include="..\..\..\darkmodelib\src\DmlibSubclass.h" />
+    <ClInclude Include="..\..\..\darkmodelib\src\DmlibSubclassControl.h" />
+    <ClInclude Include="..\..\..\darkmodelib\src\DmlibSubclassWindow.h" />
+    <ClInclude Include="..\..\..\darkmodelib\src\DmlibWinApi.h" />
+    <ClInclude Include="..\..\..\darkmodelib\src\IatHook.h" />
+    <ClInclude Include="..\..\..\darkmodelib\src\MemoryHelper.h" />
+    <ClInclude Include="..\..\..\darkmodelib\src\MemoryHelperDef.h" />
+    <ClInclude Include="..\..\..\darkmodelib\src\ModuleHelper.h" />
+    <ClInclude Include="..\..\..\darkmodelib\src\StdAfx.h" />
+    <ClInclude Include="..\..\..\darkmodelib\src\UAHMenuBar.h" />
     <ClInclude Include="..\..\matepath\src\compiler.h" />
     <ClInclude Include="..\..\matepath\src\config.h" />
     <ClInclude Include="..\..\matepath\src\DarkMode.h" />
@@ -490,6 +518,8 @@
     <ResourceCompile Include="..\..\matepath\src\matepath.rc" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\..\darkmodelib\src\dmlib.aps" />
+    <None Include="..\..\..\darkmodelib\src\dmlib.def" />
     <None Include="..\..\matepath\res\Cross1.ico" />
     <None Include="..\..\matepath\res\Cross2.ico" />
     <None Include="..\..\matepath\res\Crosshair.cur" />

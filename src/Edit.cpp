@@ -6762,6 +6762,11 @@ void TryBrowseFile(HWND hwnd, LPCWSTR pszFile, bool bWarn) noexcept {
 	SetStrEmpty(tchParam);
 	SetStrEmpty(tchExeFile);
 
+	WCHAR dbg[128];
+	wsprintf(dbg, L"np2StyleTheme=%d, np2StyleThemeOption=%d, IsSystemDarkMode=%d\n",
+		(int)np2StyleTheme, (int)np2StyleThemeOption, (int)IsSystemDarkMode());
+	OutputDebugString(dbg);
+
 	if (IniGetString(INI_SECTION_NAME_FLAGS, L"filebrowser.exe", L"", tchTemp, COUNTOF(tchTemp))) {
 		ExtractFirstArgument(tchTemp, tchExeFile, tchParam);
 	}
@@ -6777,13 +6782,21 @@ void TryBrowseFile(HWND hwnd, LPCWSTR pszFile, bool bWarn) noexcept {
 		}
 	}
 
-	if (StrNotEmpty(tchParam) && StrNotEmpty(pszFile)) {
-		StrCatBuff(tchParam, L" ", COUNTOF(tchParam));
+	// 把当前程序主题传给 matepath
+	{
+		WCHAR tchTheme[32];
+		wsprintf(tchTheme, L"-theme %s",
+			(np2StyleTheme == StyleTheme_Dark) ? L"dark" : L"light");
+		if (StrNotEmpty(tchParam)) {
+			StrCatBuff(tchParam, L" ", COUNTOF(tchParam));
+		}
+		StrCatBuff(tchParam, tchTheme, COUNTOF(tchParam));
 	}
 
 	if (StrNotEmpty(pszFile)) {
 		lstrcpy(tchTemp, pszFile);
 		PathQuoteSpaces(tchTemp);
+		StrCatBuff(tchParam, L" ", COUNTOF(tchParam));
 		StrCatBuff(tchParam, tchTemp, COUNTOF(tchParam));
 	}
 

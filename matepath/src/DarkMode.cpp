@@ -14,6 +14,7 @@
 #include "Helpers.h"
 #include "DarkMode.h"
 #include "Dialogs.h"
+#include "Darkmodelib.h"
 
 extern bool bDefColorNoFilter;
 extern bool bDefColorFilter;
@@ -21,6 +22,7 @@ extern COLORREF colorNoFilter;
 extern COLORREF colorFilter;
 extern WCHAR tchFilter[128];
 extern bool bNegFilter;
+extern bool g_bStartWithDarkMode;
 
 namespace { // DialogHook
 
@@ -119,7 +121,7 @@ void DarkMode_SetFileListViewTheme(HWND hwndLV, BOOL fullRowSelect) noexcept {
 }
 
 NP2_noinline
-bool DarkMode_SetFileListViewColor(HWND hwndLV, BOOL redraw) noexcept {
+bool DarkMode_SetFileListViewColor1(HWND hwndLV, BOOL redraw) noexcept {
 	COLORREF color = GetSysColor(COLOR_WINDOWTEXT);
 	bool hasFilter = false;
 	if (bNegFilter || !StrEqualEx(tchFilter, L"*.*")) {
@@ -133,4 +135,23 @@ bool DarkMode_SetFileListViewColor(HWND hwndLV, BOOL redraw) noexcept {
 		ListView_RedrawItems(hwndLV, 0, ListView_GetItemCount(hwndLV) - 1);
 	}
 	return hasFilter;
+}
+
+// 暗色模式下，默认文字色用浅灰；亮色用系统窗口文字色
+static COLORREF DarkMode_GetDefaultTextColor() noexcept {
+	return g_bStartWithDarkMode ? RGB(0xE0, 0xE0, 0xE0) : GetSysColor(COLOR_WINDOWTEXT);
+}
+
+NP2_noinline bool DarkMode_SetFileListViewColor(HWND hwndLV, BOOL redraw) noexcept {
+	COLORREF color;
+	if (bNegFilter || !StrEqualEx(tchFilter, L"*.*")) {
+		color = bDefColorFilter ? DarkMode_GetDefaultTextColor() : colorFilter;
+	} else {
+		color = bDefColorNoFilter ? DarkMode_GetDefaultTextColor() : colorNoFilter;
+	}
+	ListView_SetTextColor(hwndLV, color);
+	if (redraw) {
+		ListView_RedrawItems(hwndLV, 0, ListView_GetItemCount(hwndLV) - 1);
+	}
+	return bNegFilter || !StrEqualEx(tchFilter, L"*.*");
 }

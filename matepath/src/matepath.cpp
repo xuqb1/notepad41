@@ -36,6 +36,7 @@
 #include "Dialogs.h"
 #include "matepath.h"
 #include "resource.h"
+#include "Darkmodelib.h"
 
 /******************************************************************************
 *
@@ -219,6 +220,9 @@ bool		flagNoFadeHidden	= false;
 static int	iOpacityLevel		= 75;
 static bool	flagPosParam		= false;
 
+// 主题启动标志，由命令行参数设置
+bool g_bStartWithDarkMode = false;
+
 static inline bool HasFilter() noexcept {
 	return bNegFilter || !StrEqualEx(tchFilter, L"*.*");
 }
@@ -378,8 +382,14 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 	// Load Settings
 	LoadSettings();
-	DarkMode_Init();
+	// matepath 启动时
+	dmlib::initDarkMode();
+	// 根据命令行参数设置主题
+	dmlib::setDarkModeConfigEx(g_bStartWithDarkMode ? 1 : 0);
+	dmlib::setDefaultColors(true); // 如果你使用了默认颜色
 
+	DarkMode_Init();
+	OutputDebugString(GetCommandLine());
 	if (!InitApplication(hInstance)) {
 		CleanUpResources(false);
 		return FALSE;
@@ -886,6 +896,12 @@ LRESULT MsgCreate(HWND hwnd, WPARAM wParam, LPARAM lParam) noexcept {
 	GetMenuItemInfo(hmenu, SC_MINIMIZE, FALSE, &mii);
 	mii.wID = SC_MINIMIZE | 0x02;
 	SetMenuItemInfo(hmenu, SC_MINIMIZE, FALSE, &mii);
+
+	dmlib::setDarkWndNotifySafe(hwnd);
+	dmlib::setWindowEraseBgSubclass(hwnd);
+	dmlib::setWindowMenuBarSubclass(hwnd);
+	dmlib::setChildCtrlsTheme(hwnd);
+	dmlib::setDarkTitleBarEx(hwnd, true);
 	return 0;
 }
 
@@ -2729,6 +2745,10 @@ enum CommandParseState {
 }
 
 CommandParseState ParseCommandLineOption(LPWSTR lp1, LPWSTR lp2) noexcept {
+	WCHAR dbg[128];
+	wsprintf(dbg, L"ParseCommandLineOption: %s", lp1);
+	SetWindowText(hwndMain, dbg);
+
 	LPWSTR opt = lp1 + 1;
 	// only accept /opt, -opt, --opt
 	if (*opt == L'-') {
@@ -2788,6 +2808,19 @@ CommandParseState ParseCommandLineOption(LPWSTR lp1, LPWSTR lp2) noexcept {
 			}
 			break;
 
+		case L'T':
+			state = CommandParseState_Argument;
+			if (ExtractFirstArgument(lp2, lp1, lp2)) {
+				// 解析 -t dark / -t light（也支持 -theme dark）
+				if (StrCaseEqual(lp1, L"dark")) {
+					g_bStartWithDarkMode = true;
+				} else {
+					g_bStartWithDarkMode = false;
+				}
+				state = CommandParseState_Consumed;
+			}
+			break;
+
 		default:
 			break;
 		}
@@ -2807,6 +2840,21 @@ CommandParseState ParseCommandLineOption(LPWSTR lp1, LPWSTR lp2) noexcept {
 
 		default:
 			break;
+		}
+	} else {
+		// 多字符选项，比如 -theme
+		if (StrCaseEqual(opt, L"theme")) {
+			wsprintf(dbg, L"ParseCommandLineOption: %s  matched theme", lp1);
+			SetWindowText(hwndMain,dbg);
+			state = CommandParseState_Argument;
+			if (ExtractFirstArgument(lp2, lp1, lp2)) {
+				if (StrCaseEqual(lp1, L"dark")) {
+					g_bStartWithDarkMode = true;
+				} else {
+					g_bStartWithDarkMode = false;
+				}
+				state = CommandParseState_Consumed;
+			}
 		}
 	}
 
