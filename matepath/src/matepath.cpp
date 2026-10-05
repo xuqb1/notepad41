@@ -222,6 +222,7 @@ static bool	flagPosParam		= false;
 
 // 主题启动标志，由命令行参数设置
 bool g_bStartWithDarkMode = false;
+bool g_bThemeSpecified = false;
 
 static inline bool HasFilter() noexcept {
 	return bNegFilter || !StrEqualEx(tchFilter, L"*.*");
@@ -253,7 +254,16 @@ static void CleanUpResources(bool initialized) noexcept {
 #endif
 	OleUninitialize();
 }
-
+bool IsSystemDarkMode() noexcept {
+	DWORD value = 0;
+	DWORD size = sizeof(value);
+	if (RegGetValueW(HKEY_CURRENT_USER,
+			L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+			L"AppsUseLightTheme", RRF_RT_REG_DWORD, nullptr, &value, &size) == ERROR_SUCCESS) {
+		return value == 0; // 0 = 暗色，1 = 亮色
+	}
+	return false; // 默认亮色
+}
 BOOL WINAPI ConsoleHandlerRoutine(DWORD dwCtrlType) noexcept {
 	if (dwCtrlType == CTRL_C_EVENT) {
 		ShowNotifyIcon(hwndMain, false);
@@ -385,7 +395,14 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	// matepath 启动时
 	dmlib::initDarkMode();
 	// 根据命令行参数设置主题
-	dmlib::setDarkModeConfigEx(g_bStartWithDarkMode ? 1 : 0);
+	// 优先用命令行 -theme；没传时用系统暗色状态
+	bool bDark;
+	if (g_bThemeSpecified) {
+		bDark = g_bStartWithDarkMode;
+	} else {
+		bDark = IsSystemDarkMode();
+	}
+	dmlib::setDarkModeConfigEx(bDark ? 1 : 0);
 	dmlib::setDefaultColors(true); // 如果你使用了默认颜色
 
 	DarkMode_Init();
@@ -2845,13 +2862,15 @@ CommandParseState ParseCommandLineOption(LPWSTR lp1, LPWSTR lp2) noexcept {
 		// 多字符选项，比如 -theme
 		if (StrCaseEqual(opt, L"theme")) {
 			wsprintf(dbg, L"ParseCommandLineOption: %s  matched theme", lp1);
-			SetWindowText(hwndMain,dbg);
+			SetWindowText(hwndMain, dbg);
 			state = CommandParseState_Argument;
 			if (ExtractFirstArgument(lp2, lp1, lp2)) {
 				if (StrCaseEqual(lp1, L"dark")) {
 					g_bStartWithDarkMode = true;
-				} else {
+					g_bThemeSpecified = true;
+				} else if (StrCaseEqual(lp1, L"light")) {
 					g_bStartWithDarkMode = false;
+					g_bThemeSpecified = true;
 				}
 				state = CommandParseState_Consumed;
 			}
