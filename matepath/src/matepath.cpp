@@ -402,6 +402,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	} else {
 		bDark = IsSystemDarkMode();
 	}
+	g_bStartWithDarkMode = bDark;
 	dmlib::setDarkModeConfigEx(bDark ? 1 : 0);
 	dmlib::setDefaultColors(true); // 如果你使用了默认颜色
 
