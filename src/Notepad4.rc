@@ -12,11 +12,11 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// Ӣ��(����) resources
+// 英语(美国) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
-#pragma code_page(1252)
+#pragma code_page(65001)
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -619,18 +619,18 @@ BEGIN
             POPUP "&Language"
             BEGIN
                 MENUITEM "&System Language",            IDM_LANG_USER_DEFAULT
-                MENUITEM "Deutsch",                     IDM_LANG_GERMAN
-                MENUITEM "English",                     IDM_LANG_ENGLISH_US
-                MENUITEM "Fran�ais",                    IDM_LANG_FRENCH_FRANCE
-                MENUITEM "Italiano",                    IDM_LANG_ITALIAN
-                MENUITEM "Polski",                      IDM_LANG_POLISH
-                MENUITEM "Portugu�s (Brasil)",          IDM_LANG_PORTUGUESE_BRAZIL
-                MENUITEM "???????",                     IDM_LANG_RUSSIAN
-                MENUITEM "Sloven�cina",                 IDM_LANG_SLOVENIAN
-                MENUITEM "???",                         IDM_LANG_JAPANESE
-                MENUITEM "???",                         IDM_LANG_KOREAN
-                MENUITEM "??(??)",                      IDM_LANG_CHINESE_TRADITIONAL
-                MENUITEM "??(??)",                      IDM_LANG_CHINESE_SIMPLIFIED
+                MENUITEM "Deutsch",					    IDM_LANG_GERMAN
+				MENUITEM "English",					    IDM_LANG_ENGLISH_US
+				MENUITEM "Français",				    IDM_LANG_FRENCH_FRANCE
+				MENUITEM "Italiano",				    IDM_LANG_ITALIAN
+				MENUITEM "Polski",					    IDM_LANG_POLISH
+				MENUITEM "Português (Brasil)",		    IDM_LANG_PORTUGUESE_BRAZIL
+				MENUITEM "Русский",					    IDM_LANG_RUSSIAN
+				MENUITEM "Slovenščina",				    IDM_LANG_SLOVENIAN
+				MENUITEM "日本語",					    IDM_LANG_JAPANESE
+				MENUITEM "한국어",					        IDM_LANG_KOREAN
+				MENUITEM "中文(繁體)",				    IDM_LANG_CHINESE_TRADITIONAL
+				MENUITEM "中文(简体)",				    IDM_LANG_CHINESE_SIMPLIFIED
             END
         END
         POPUP "Window O&ptions"
@@ -1059,26 +1059,28 @@ END
 // Dialog
 //
 
-IDD_ABOUT DIALOGEX 0, 0, 255, 144
+IDD_ABOUT DIALOGEX 0, 0, 255, 184
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Notepad4"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,142,123,50,14
-    PUSHBUTTON      "Copy",IDC_COPY_BUILD_INFO,198,123,50,14
+    DEFPUSHBUTTON   "OK",IDOK,142,163,50,14
+    PUSHBUTTON      "Copy",IDC_COPY_BUILD_INFO,198,163,50,14
     ICON            IDR_MAINWND,IDC_STATIC,14,7,20,20
     LTEXT           "",IDC_VERSION,45,7,200,8
     LTEXT           "",IDC_BUILD_INFO,45,18,200,16
-    LTEXT           "Copyright ?2011-2026 Zufu Liu and all contributors.",IDC_STATIC,45,38,200,8
-    CONTROL         "",IDC_NEW_PAGE_LINK,"SysLink",WS_TABSTOP,45,48,200,10
-    LTEXT           "Copyright ?2010-2017 XhmikosR and all contributors.",IDC_STATIC,45,60,200,8
-    CONTROL         "",IDC_MOD_PAGE_LINK,"SysLink",WS_TABSTOP,45,68,200,10
-    LTEXT           "Copyright ?2004-2012 Florian Balmer.",IDC_STATIC,45,80,200,8
-    CONTROL         "",IDC_WEBPAGE_LINK,"SysLink",WS_TABSTOP,45,88,200,10
-    LTEXT           "Contact Florian Balmer:",IDC_STATIC,45,100,94,8
-    CONTROL         "",IDC_EMAIL_LINK,"SysLink",WS_TABSTOP,45,108,94,10
-    LTEXT           "Visit Scintilla's website:",IDC_STATIC,45,120,94,8
-    CONTROL         "",IDC_SCI_PAGE_LINK,"SysLink",WS_TABSTOP,45,128,94,10
+    LTEXT           "Copyright © 2026-2027 xsoft2005 (wechat).",IDC_STATIC,45,38,200,8 
+    CONTROL         "",IDC_NEW1_PAGE_LINK,"SysLink",WS_TABSTOP,45,48,200,10
+    LTEXT           "Copyright © 2011-2026 Zufu Liu and all contributors.",IDC_STATIC,45,60,200,8
+    CONTROL         "",IDC_NEW_PAGE_LINK,"SysLink",WS_TABSTOP,45,70,200,10
+    LTEXT           "Copyright © 2010-2017 XhmikosR and all contributors.",IDC_STATIC,45,82,200,8
+    CONTROL         "",IDC_MOD_PAGE_LINK,"SysLink",WS_TABSTOP,45,92,200,10
+    LTEXT           "Copyright © 2004-2012 Florian Balmer.",IDC_STATIC,45,104,200,8
+    CONTROL         "",IDC_WEBPAGE_LINK,"SysLink",WS_TABSTOP,45,114,200,10
+    LTEXT           "Contact Florian Balmer:",IDC_STATIC,45,126,94,8
+    CONTROL         "",IDC_EMAIL_LINK,"SysLink",WS_TABSTOP,45,136,94,10
+    LTEXT           "Visit Scintilla's website:",IDC_STATIC,45,148,94,8
+    CONTROL         "",IDC_SCI_PAGE_LINK,"SysLink",WS_TABSTOP,45,158,94,10
 END
 
 IDD_FIND DIALOGEX 0, 0, 290, 124
@@ -2087,7 +2089,7 @@ BEGIN
     IDS_WRAP_MODE_OPTIONS   "No wrap|Wrap text between words|Wrap text between any characters|Wrap text on whitespace|Automatic word wrap"
 END
 
-#endif    // Ӣ��(����) resources
+#endif    // 英语(美国) resources
 /////////////////////////////////////////////////////////////////////////////
 
 

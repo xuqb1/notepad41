@@ -460,6 +460,8 @@ BEGIN
 		MENUITEM "Line &Numbers\tCtrl+Shift+N",		IDM_VIEW_LINENUMBERS
 		MENUITEM "Bookmark &Margin\tCtrl+Shift+M",	IDM_VIEW_MARGIN
 		MENUITEM "Change &History Marker",			IDM_VIEW_CHANGE_HISTORY_MARKER
+		MENUITEM "Vodoravna delitev",			IDM_VIEW_SPLIT_H
+		MENUITEM "Navpična delitev",			IDM_VIEW_SPLIT_V
 		MENUITEM SEPARATOR
 		MENUITEM "Show Code &Folding\tCtrl+Shift+Alt+F",IDM_VIEW_SHOW_FOLDING
 		POPUP "&Toggle Folds"
@@ -497,10 +499,17 @@ BEGIN
 		MENUITEM "&Favorite Schemes...",			IDM_VIEW_SCHEME_FAVORITE
 		MENUITEM SEPARATOR
 		MENUITEM "&Use Default Code Style\tShift+F12",IDM_VIEW_USEDEFAULT_CODESTYLE
-		POPUP "St&yle Theme"
+		POPUP "Slog programa"
 		BEGIN
-			MENUITEM "&Default",					IDM_VIEW_STYLE_THEME_DEFAULT
-			MENUITEM "Dar&k",						IDM_VIEW_STYLE_THEME_DARK
+			MENUITEM "Po sistemu",					IDM_VIEW_STYLE_THEME_DEFAULT
+			MENUITEM "Svetlo",					IDM_VIEW_STYLE_THEME_LIGHT
+			MENUITEM "Temno",					IDM_VIEW_STYLE_THEME_DARK
+		END
+		POPUP "Slog urejevalnika"
+		BEGIN
+			MENUITEM "Po programu",				IDM_VIEW_EDITOR_THEME_FOLLOW, CHECKED
+			MENUITEM "Svetlo",						IDM_VIEW_EDITOR_THEME_LIGHT
+			MENUITEM "Temno",						IDM_VIEW_EDITOR_THEME_DARK
 		END
 		MENUITEM SEPARATOR
 		POPUP "&Text File"
@@ -660,6 +669,7 @@ BEGIN
 		MENUITEM "Single &File Instance",			IDM_VIEW_SINGLEFILEINSTANCE
 		MENUITEM "File &Change Notification...\tAlt+F5",	IDM_VIEW_CHANGENOTIFY
 		MENUITEM "A&utoSave Settings...",			IDM_SET_FILE_AUTOSAVE
+		MENUITEM "Velikost strani za velike datoteke...",	IDM_SET_BIGFILE_PAGE_SIZE
 		POPUP "Extra Esc &Key Function"
 		BEGIN
 			MENUITEM "&None",						IDM_VIEW_NOESCFUNC
@@ -1067,26 +1077,28 @@ END
 // Dialog
 //
 
-IDD_ABOUT DIALOGEX 0, 0, 255, 144
+IDD_ABOUT DIALOGEX 0, 0, 255, 184
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Notepad4"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,142,123,50,14
-    PUSHBUTTON      "Copy",IDC_COPY_BUILD_INFO,198,123,50,14
+    DEFPUSHBUTTON   "OK",IDOK,142,163,50,14
+    PUSHBUTTON      "Copy",IDC_COPY_BUILD_INFO,198,163,50,14
     ICON            IDR_MAINWND,IDC_STATIC,14,7,20,20
     LTEXT           "",IDC_VERSION,45,7,200,8
     LTEXT           "",IDC_BUILD_INFO,45,18,200,16
-    LTEXT           "Copyright © 2011-2026 Zufu Liu and all contributors.",IDC_STATIC,45,38,200,8
-    CONTROL         "",IDC_NEW_PAGE_LINK,"SysLink",WS_TABSTOP,45,48,200,10
-    LTEXT           "Copyright © 2010-2017 XhmikosR and all contributors.",IDC_STATIC,45,60,200,8
-    CONTROL         "",IDC_MOD_PAGE_LINK,"SysLink",WS_TABSTOP,45,68,200,10
-    LTEXT           "Copyright © 2004-2012 Florian Balmer.",IDC_STATIC,45,80,200,8
-    CONTROL         "",IDC_WEBPAGE_LINK,"SysLink",WS_TABSTOP,45,88,200,10
-    LTEXT           "Contact Florian Balmer:",IDC_STATIC,45,100,94,8
-    CONTROL         "",IDC_EMAIL_LINK,"SysLink",WS_TABSTOP,45,108,94,10
-    LTEXT           "Visit Scintilla's website:",IDC_STATIC,45,120,94,8
-    CONTROL         "",IDC_SCI_PAGE_LINK,"SysLink",WS_TABSTOP,45,128,94,10
+    LTEXT           "Copyright © 2026-2027 xsoft2005 (wechat).",IDC_STATIC,45,38,200,8 
+    CONTROL         "",IDC_NEW1_PAGE_LINK,"SysLink",WS_TABSTOP,45,48,200,10
+    LTEXT           "Copyright © 2011-2026 Zufu Liu and all contributors.",IDC_STATIC,45,60,200,8
+    CONTROL         "",IDC_NEW_PAGE_LINK,"SysLink",WS_TABSTOP,45,70,200,10
+    LTEXT           "Copyright © 2010-2017 XhmikosR and all contributors.",IDC_STATIC,45,82,200,8
+    CONTROL         "",IDC_MOD_PAGE_LINK,"SysLink",WS_TABSTOP,45,92,200,10
+    LTEXT           "Copyright © 2004-2012 Florian Balmer.",IDC_STATIC,45,104,200,8
+    CONTROL         "",IDC_WEBPAGE_LINK,"SysLink",WS_TABSTOP,45,114,200,10
+    LTEXT           "Contact Florian Balmer:",IDC_STATIC,45,126,94,8
+    CONTROL         "",IDC_EMAIL_LINK,"SysLink",WS_TABSTOP,45,136,94,10
+    LTEXT           "Visit Scintilla's website:",IDC_STATIC,45,148,94,8
+    CONTROL         "",IDC_SCI_PAGE_LINK,"SysLink",WS_TABSTOP,45,158,94,10
 END
 
 IDD_FIND DIALOGEX 0, 0, 290, 124
@@ -1738,6 +1750,12 @@ BEGIN
     IDS_LINKDESCRIPTION     "Edit with Notepad&4"
     IDS_FILTER_ALL          "All Files (*.*)|*.*|"
     IDS_FILTER_EXE          "Executable Files (*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif)|*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif|All Files (*.*)|*.*|"
+    IDS_PAGED_MODE_NO_SPLIT  "Delitev ni na voljo v načinu strani."
+    IDS_PAGE_PREV_TIP  "Prejšnja stran"
+    IDS_PAGE_NEXT_TIP  "Naslednja stran"
+    IDS_PAGE_GOTO_TIP  "Pojdi na stran"
+    IDS_LINE_OUT_OF_RANGE   "Številka vrstice je izven obsega."
+    IDS_LINE_IN_OTHER_PAGE  "Vrstica je na strani %d. Najprej pojdite na to stran."
 END
 
 STRINGTABLE
@@ -2102,6 +2120,17 @@ BEGIN
 
 	NP2STYLE_Default				"Default"
 END
+IDD_PAGE_SIZE DIALOGEX 0, 0, 180, 70
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Velikost strani za velike datoteke"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "Velikost strani:",IDC_STATIC,7,10,60,8
+    COMBOBOX        IDC_PAGE_SIZE,70,7,100,100,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    DEFPUSHBUTTON   "OK",IDOK,63,45,50,14
+    PUSHBUTTON      "Prekliči",IDCANCEL,119,45,50,14
+END
+
 #endif // NP2_ENABLE_LOCALIZE_STYLE_NAME
 
 

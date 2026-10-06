@@ -509,9 +509,9 @@ void Encoding_InitDefaults() noexcept {
 	UINT acp = GetACP();
 	if (acp == CP_UTF8) {
 		GetLegacyACP(&acp);
-		wsprintf(wchANSI[CPI_DEFAULT], L" (UTF-8, %u)", acp);
+		wsprintfW(wchANSI[CPI_DEFAULT], L" (UTF-8, %u)", acp);
 	} else {
-		wsprintf(wchANSI[CPI_DEFAULT], L" (%u)", acp);
+		wsprintfW(wchANSI[CPI_DEFAULT], L" (%u)", acp);
 	}
 
 	mEncoding[CPI_DEFAULT].uCodePage = acp;
@@ -531,9 +531,9 @@ void Encoding_InitDefaults() noexcept {
 	UINT oemcp = GetOEMCP();
 	if (oemcp == CP_UTF8) {
 		GetLegacyOEMCP(&oemcp);
-		wsprintf(wchANSI[CPI_OEM], L" (UTF-8, %u)", oemcp);
+		wsprintfW(wchANSI[CPI_OEM], L" (UTF-8, %u)", oemcp);
 	} else {
-		wsprintf(wchANSI[CPI_OEM], L" (%u)", oemcp);
+		wsprintfW(wchANSI[CPI_OEM], L" (%u)", oemcp);
 	}
 
 	mEncoding[CPI_OEM].uCodePage = oemcp;

@@ -1514,7 +1514,7 @@ int Toolbar_GetButtons(HWND hwnd, int cmdBase, LPWSTR lpszButtons, int cchButton
 		TBBUTTON tbb;
 		SendMessage(hwnd, TB_GETBUTTON, i, AsInteger<LPARAM>(&tbb));
 		const int iCmd = (tbb.idCommand == 0) ? 0 : tbb.idCommand - cmdBase + 1;
-		len += wsprintf(lpszButtons + len, L"%i ", iCmd);
+		len += wsprintfW(lpszButtons + len, L"%i ", iCmd);
 	}
 
 	lpszButtons[len--] = L'\0';
@@ -2349,11 +2349,11 @@ void ParseMRUEntry(LPCWSTR lpszEntry, LPWSTR lpszPath, int cchPath,
 	*line = 1;
 	*col = 1;
 	WCHAR dbg[128];
-	wsprintf(dbg, L"ParseMRUEntry lpszPath=%s\n", lpszPath);
+	wsprintfW(dbg, L"ParseMRUEntry lpszPath=%s\n", lpszPath);
 	OutputDebugString(dbg);
 	LPWSTR p1 = StrRChr(lpszPath, nullptr, L'?');
 	if (p1 == nullptr) {
-		wsprintf(dbg, L"ParseMRUEntry not found first ?\n");
+		wsprintfW(dbg, L"ParseMRUEntry not found first ?\n");
 		OutputDebugString(dbg);
 		return;
 	}
@@ -2362,7 +2362,7 @@ void ParseMRUEntry(LPCWSTR lpszEntry, LPWSTR lpszPath, int cchPath,
 	LPWSTR p2 = StrRChr(lpszPath, nullptr, L'?');
 	if (p2 == nullptr) {
 		lstrcpyn(lpszPath, lpszEntry, cchPath);
-		wsprintf(dbg, L"ParseMRUEntry not found second ?\n");
+		wsprintfW(dbg, L"ParseMRUEntry not found second ?\n");
 		OutputDebugString(dbg);
 		return;
 	}
@@ -2376,7 +2376,7 @@ void ParseMRUEntry(LPCWSTR lpszEntry, LPWSTR lpszPath, int cchPath,
 		c = 1;
 	*line = l;
 	*col = c;
-	wsprintf(dbg, L"ParseMRUEntry result: %d?%d\n", l, c);
+	wsprintfW(dbg, L"ParseMRUEntry result: %d?%d\n", l, c);
 	OutputDebugString(dbg);
 }
 //=============================================================================
@@ -2508,7 +2508,7 @@ void MRUList::Load() noexcept {
 			WCHAR szPos[32] = L"";
 			lstrcpyn(szPath, tchItem, COUNTOF(szPath));
 			WCHAR dbg[512];
-			wsprintf(dbg, L"Load: szPath=%s isRelative=%d\n", szPath, PathIsRelative(szPath));
+			wsprintfW(dbg, L"Load: szPath=%s isRelative=%d\n", szPath, PathIsRelative(szPath));
 			OutputDebugString(dbg);
 			LPWSTR p = StrRChr(szPath, nullptr, L'?');
 			if (p != nullptr) {
@@ -2519,7 +2519,7 @@ void MRUList::Load() noexcept {
 					lstrcpyn(szPos, p2, COUNTOF(szPos));
 					*p2 = L'\0';
 					WCHAR dbg[512];
-					wsprintf(dbg, L"Load: after truncate szPath=%s szPos=%s\n", szPath, szPos);
+					wsprintfW(dbg, L"Load: after truncate szPath=%s szPos=%s\n", szPath, szPos);
 					OutputDebugString(dbg);
 				}
 			}
@@ -2533,7 +2533,7 @@ void MRUList::Load() noexcept {
 				lstrcpy(tchPath, szPath);
 			}
 			WCHAR dbg2[512];
-			wsprintf(dbg2, L"Load: after PathAbsoluteFromApp tchPath=%s", tchPath);
+			wsprintfW(dbg2, L"Load: after PathAbsoluteFromApp tchPath=%s", tchPath);
 			OutputDebugString(dbg2);
 
 			// 拼回 ?line?col
@@ -2561,10 +2561,10 @@ void MRUList::Save() const noexcept {
 
 	for (int i = 0; i < iSize; i++) {
 		LPCWSTR tchItem = pszItems[i];
-		wsprintf(dbg, L"Load: tchItem=%s\n", tchItem);
+		wsprintfW(dbg, L"Load: tchItem=%s\n", tchItem);
 		OutputDebugString(dbg);
 		if (StrNotEmpty(tchItem)) {
-			wsprintf(tchName, L"%02i", i + 1);
+			wsprintfW(tchName, L"%02i", i + 1);
 			if (iFlags & MRUFlags_QuoteValue) {
 				section.SetQuotedString(tchName, tchItem);
 			} else {
@@ -2581,7 +2581,7 @@ void MRUList::Save() const noexcept {
 						*p2 = L'\0';
 					}
 				}
-				wsprintf(dbg, L"Load: szPath=%s szPos=%s\n", szPath, szPos);
+				wsprintfW(dbg, L"Load: szPath=%s szPos=%s\n", szPath, szPos);
 				OutputDebugString(dbg);
 
 				// 转相对路径
@@ -2591,14 +2591,14 @@ void MRUList::Save() const noexcept {
 				} else {
 					lstrcpy(tchPath, szPath);
 				}
-				wsprintf(dbg, L"Load: tchPath=%s\n", tchPath);
+				wsprintfW(dbg, L"Load: tchPath=%s\n", tchPath);
 				OutputDebugString(dbg);
 
 				// 拼回 ?line?col
 				lstrcat(tchPath, szPos);
 				section.SetString(tchName, tchPath);
 				//lstrcat(tchPath, szPos);
-				wsprintf(dbg, L"Load: final=%s\n", tchPath);
+				wsprintfW(dbg, L"Load: final=%s\n", tchPath);
 				OutputDebugString(dbg);
 
 				//pszItems[n++] = HeapStrDupW(tchPath);

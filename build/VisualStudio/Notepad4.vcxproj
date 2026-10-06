@@ -157,7 +157,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\scintilla\include;..\..\scintilla\lexlib;..\..\scintilla\src;..\..\src;E:\project\darkmodelib\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\scintilla\include;..\..\scintilla\lexlib;..\..\scintilla\src;..\..\src;..\..\darkmodelib\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WINDOWS;NOMINMAX;WIN32_LEAN_AND_MEAN;STRICT_TYPED_ITEMIDS;BOOST_REGEX_STANDALONE;NO_CXX11_REGEX;UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel>
       <LanguageStandard>stdcpplatest</LanguageStandard>
@@ -460,16 +460,16 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\darkmodelib\src\Darkmodelib.cpp" />
-    <ClCompile Include="..\..\..\darkmodelib\src\DmlibColor.cpp" />
-    <ClCompile Include="..\..\..\darkmodelib\src\DmlibDpi.cpp" />
-    <ClCompile Include="..\..\..\darkmodelib\src\DmlibHook.cpp" />
-    <ClCompile Include="..\..\..\darkmodelib\src\DmlibIni.cpp" />
-    <ClCompile Include="..\..\..\darkmodelib\src\DmlibPaintHelper.cpp" />
-    <ClCompile Include="..\..\..\darkmodelib\src\DmlibSubclass.cpp" />
-    <ClCompile Include="..\..\..\darkmodelib\src\DmlibSubclassControl.cpp" />
-    <ClCompile Include="..\..\..\darkmodelib\src\DmlibSubclassWindow.cpp" />
-    <ClCompile Include="..\..\..\darkmodelib\src\DmlibWinApi.cpp" />
+    <ClCompile Include="..\..\darkmodelib\src\Darkmodelib.cpp" />
+    <ClCompile Include="..\..\darkmodelib\src\DmlibColor.cpp" />
+    <ClCompile Include="..\..\darkmodelib\src\DmlibDpi.cpp" />
+    <ClCompile Include="..\..\darkmodelib\src\DmlibHook.cpp" />
+    <ClCompile Include="..\..\darkmodelib\src\DmlibIni.cpp" />
+    <ClCompile Include="..\..\darkmodelib\src\DmlibPaintHelper.cpp" />
+    <ClCompile Include="..\..\darkmodelib\src\DmlibSubclass.cpp" />
+    <ClCompile Include="..\..\darkmodelib\src\DmlibSubclassControl.cpp" />
+    <ClCompile Include="..\..\darkmodelib\src\DmlibSubclassWindow.cpp" />
+    <ClCompile Include="..\..\darkmodelib\src\DmlibWinApi.cpp" />
     <ClCompile Include="..\..\scintilla\lexers\LexAPDL.cxx" />
     <ClCompile Include="..\..\scintilla\lexers\LexAsm.cxx" />
     <ClCompile Include="..\..\scintilla\lexers\LexAsymptote.cxx" />
@@ -689,24 +689,24 @@
     <ClCompile Include="..\..\src\EditLexers\stlZig.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\darkmodelib\include\Darkmodelib.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\DmlibColor.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\DmlibDpi.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\DmlibGlyph.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\DmlibHook.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\DmlibIni.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\DmlibPaintHelper.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\DmlibSubclass.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\DmlibSubclassControl.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\DmlibSubclassWindow.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\DmlibWinApi.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\IatHook.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\MemoryHelper.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\MemoryHelperDef.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\ModuleHelper.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\StdAfx.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\UAHMenuBar.h" />
-    <ClInclude Include="..\..\..\darkmodelib\src\Version.h" />
+    <ClInclude Include="..\..\darkmodelib\include\Darkmodelib.h" />
+    <ClInclude Include="..\..\darkmodelib\src\DmlibColor.h" />
+    <ClInclude Include="..\..\darkmodelib\src\DmlibDpi.h" />
+    <ClInclude Include="..\..\darkmodelib\src\DmlibGlyph.h" />
+    <ClInclude Include="..\..\darkmodelib\src\DmlibHook.h" />
+    <ClInclude Include="..\..\darkmodelib\src\DmlibIni.h" />
+    <ClInclude Include="..\..\darkmodelib\src\DmlibPaintHelper.h" />
+    <ClInclude Include="..\..\darkmodelib\src\DmlibSubclass.h" />
+    <ClInclude Include="..\..\darkmodelib\src\DmlibSubclassControl.h" />
+    <ClInclude Include="..\..\darkmodelib\src\DmlibSubclassWindow.h" />
+    <ClInclude Include="..\..\darkmodelib\src\DmlibWinApi.h" />
+    <ClInclude Include="..\..\darkmodelib\src\IatHook.h" />
+    <ClInclude Include="..\..\darkmodelib\src\MemoryHelper.h" />
+    <ClInclude Include="..\..\darkmodelib\src\MemoryHelperDef.h" />
+    <ClInclude Include="..\..\darkmodelib\src\ModuleHelper.h" />
+    <ClInclude Include="..\..\darkmodelib\src\StdAfx.h" />
+    <ClInclude Include="..\..\darkmodelib\src\UAHMenuBar.h" />
+    <ClInclude Include="..\..\darkmodelib\src\Version.h" />
     <ClInclude Include="..\..\scintilla\include\GraphicUtils.h" />
     <ClInclude Include="..\..\scintilla\include\ILexer.h" />
     <ClInclude Include="..\..\scintilla\include\ILoader.h" />
@@ -793,7 +793,7 @@
     <ClInclude Include="..\..\src\VersionRev.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\..\darkmodelib\src\dmlib.def" />
+    <None Include="..\..\darkmodelib\src\dmlib.def" />
     <None Include="..\..\res\Copy.cur" />
     <None Include="..\..\res\Encoding16.bmp" />
     <None Include="..\..\res\Next16.bmp" />

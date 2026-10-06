@@ -353,12 +353,12 @@ bool EditPrint(HWND hwnd, LPCWSTR pszDocTitle, BOOL bDefault) noexcept {
 		WCHAR tchNum[32];
 		FormatNumber(tchNum, pageNum);
 		WCHAR pageString[128];
-		wsprintf(pageString, tchPageFormat, tchNum);
+		wsprintfW(pageString, tchPageFormat, tchNum);
 
 		if (printPage) {
 			// Display current page number in Statusbar
 			WCHAR statusString[128];
-			wsprintf(statusString, tchPageStatus, tchNum);
+			wsprintfW(statusString, tchPageStatus, tchNum);
 
 			StatusSetText(hwndStatus, STATUS_HELP, statusString);
 			StatusSetSimple(hwndStatus, TRUE);
@@ -1599,9 +1599,9 @@ void EditCalculateExpr(int menu) {
 					context.lineStart = 1;
 					pszBuf += iSelCount;
 					// Use with(Math) to avoid writing it everywhere.
-					wsprintf(pszBuf, L"with(Math){\n%s}", pszTextW);
+					wsprintfW(pszBuf, L"with(Math){\n%s}", pszTextW);
 					// regex replace() to support pow operator ^
-					/*wsprintf(pszBuf,
+					/*wsprintfW(pszBuf,
 						L"(function(s){"
 						L"var str = s.replace(/([\\d.]+)\\s*\\^\\s*([\\d.]+)/g, 'pow($1,$2)');"
 						L"with(Math){return eval(str);}"

@@ -577,7 +577,7 @@ static LONG WINAPI TopLevelHandler(EXCEPTION_POINTERS *ep) {
       WCHAR tchPath[64];
       const UINT pid = GetCurrentProcessId();
       const UINT tid = GetCurrentThreadId();
-      wsprintf(tchPath, L"%s %u %u.dmp", WC_NOTEPAD4, pid, tid);
+      wsprintfW(tchPath, L"%s %u %u.dmp", WC_NOTEPAD4, pid, tid);
       HANDLE hFile = CreateFile(tchPath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
         nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
       if (hFile != INVALID_HANDLE_VALUE) {
@@ -1329,6 +1329,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam)
                 dmlib::setDefaultColors(true);
                 dmlib::setDarkTitleBarEx(hwnd, true);
                 dmlib::setChildCtrlsTheme(hwnd);
+                // setDarkModeConfigEx 可能重置进程暗色状态，需在其后重新应用编辑器滚动条主题
+                Style_UpdateEditorScrollbarTheme();
                 RedrawWindow(hwnd, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW | RDW_FRAME);
             }
         }
@@ -1922,7 +1924,7 @@ static LRESULT CALLBACK Edit2SubProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM
 //		//hwndEdit2;
 //		InitScintillaHandle(hwnd);//hwndEdit2);
 //		WCHAR dbg[128];
-//		wsprintf(dbg, L"Edit2 focus: hwndEdit=%p hwndEdit2=%p", hwndEdit, hwndEdit2);
+//		wsprintfW(dbg, L"Edit2 focus: hwndEdit=%p hwndEdit2=%p", hwndEdit, hwndEdit2);
 //		SetWindowText(hwndMain, dbg);
 //		break;
 //	//case WM_KILLFOCUS:
@@ -2060,6 +2062,9 @@ void EditCreate(HWND hwndParent) noexcept {
   SciCall_SetViewWS(bViewWhiteSpace ? SCWS_VISIBLEALWAYS : SCWS_INVISIBLE);
   SciCall_SetViewEOL(bViewEOLs);
   SciCall_SetAutoInsertMask(autoCompletionConfig.fAutoInsertMask);
+
+  // 滚动条跟随最终生效的编辑器主题
+  Style_UpdateEditorScrollbarTheme();
 }
 
 // 创建第二个 Scintilla 窗口，共享主编辑器的文档
@@ -2084,7 +2089,7 @@ static void EditCreate2(HWND hwndParent) noexcept {
 	//SetWindowSubclass(hwndEdit2, Edit2SubProc, 0, 0);
 	BOOL ok = SetWindowSubclass(hwndEdit2, Edit2SubProc, 0, 0);
 	WCHAR dbg[64];
-	wsprintf(dbg, L"Subclass: %d", ok);
+	wsprintfW(dbg, L"Subclass: %d", ok);
 	SetWindowText(hwndMain, dbg);
     // 共享主编辑器的文档
     //HANDLE hDoc = SendMessage(hwndEdit2, SCI_GETDOCPOINTER, 0, 0);	//SciCall_GetDocPointer();
@@ -2139,6 +2144,9 @@ static void EditCreate2(HWND hwndParent) noexcept {
     RECT rc;
     GetClientRect(hwndParent, &rc);
     SetWindowPos(hwndEdit2, nullptr, 0, 0, rc.right / 2, rc.bottom, SWP_NOZORDER | SWP_NOACTIVATE);
+
+    // 新窗格滚动条也要跟随编辑器主题
+    Style_UpdateEditorScrollbarTheme();
 }
 
 void EditReplaceDocument(HANDLE pdoc) noexcept {
@@ -2697,7 +2705,7 @@ void UpdateStatusBarCache(int item) noexcept {
   } break;
 
   case StatusItem_Zoom:
-    wsprintf(cachedStatusItem.tchZoom, L"%i%%", iZoomLevel);
+    wsprintfW(cachedStatusItem.tchZoom, L"%i%%", iZoomLevel);
     break;
   }
 }
@@ -3191,9 +3199,9 @@ void UpdatePageBar() noexcept {
 	if (!bPagedMode || !hwndPageLabel)
 		return;
 	WCHAR szText[64];
-	wsprintf(szText, L"%d / %d", g_currentPage + 1, (int)g_pages.size());
+	wsprintfW(szText, L"%d / %d", g_currentPage + 1, (int)g_pages.size());
 	SetWindowText(hwndPageLabel, szText);
-	wsprintf(szText, L"%d", g_currentPage + 1);
+	wsprintfW(szText, L"%d", g_currentPage + 1);
 	SetWindowText(hwndPageEdit, szText);
 
 	EnableWindow(hwndPagePrev, g_currentPage > 0);
@@ -4407,6 +4415,8 @@ LRESULT MsgCommand(HWND hwnd, WPARAM wParam, LPARAM lParam) {
       dmlib::setDefaultColors(true);
       dmlib::setDarkTitleBarEx(hwnd, true);
       dmlib::setChildCtrlsTheme(hwnd);
+      // setDarkModeConfigEx 可能重置进程暗色状态，需在其后重新应用编辑器滚动条主题
+      Style_UpdateEditorScrollbarTheme();
       RedrawWindow(hwnd, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW | RDW_FRAME);
     }
     break;
@@ -4416,18 +4426,6 @@ LRESULT MsgCommand(HWND hwnd, WPARAM wParam, LPARAM lParam) {
   case IDM_VIEW_EDITOR_THEME_DARK: {
     const int option = LOWORD(wParam) - IDM_VIEW_EDITOR_THEME_FOLLOW;
     Style_OnEditorThemeChanged(option);
-    /*WCHAR dbg[128];
-    wsprintf(dbg, L"ScrollBar: editorTheme=%d hwndEdit=%p", np2EditorTheme, hwndEdit);
-    SetWindowText(hwnd, dbg);*/
-    // 获取 Scintilla 的滚动条句柄
-    /*HWND hScrollBar = GetScrollBarControl(hwndEdit, SB_VERT);
-    if (hScrollBar) {
-        SetWindowTheme(hScrollBar, L"DarkMode_Explorer", nullptr);
-    }*/
-    //if (np2EditorTheme == StyleTheme_Dark) {
-    //	dmlib::enableDarkScrollBarForWindowAndChildren(hwndEdit);
-    //	//SciCall_SetElementColor(SC_ELEMENT_SCROLLBAR_BACK, RGB(0x1E, 0x1E, 0x1E));
-    //}
     DrawMenuBar(hwnd);
   } break;
   case IDM_VIEW_DEFAULT_CODE_FONT:
@@ -5351,7 +5349,7 @@ LRESULT MsgCommand(HWND hwnd, WPARAM wParam, LPARAM lParam) {
     const BOOL maximized = IsZoomed(hwnd) || (wndpl.flags & WPF_RESTORETOMAXIMIZED);
 
     WCHAR wszWinPos[64];
-    wsprintf(wszWinPos, L"/pos %i,%i,%i,%i,%i", x, y, cx, cy, maximized);
+    wsprintfW(wszWinPos, L"/pos %i,%i,%i,%i,%i", x, y, cx, cy, maximized);
 
     SetClipData(hwnd, wszWinPos);
     UpdateToolbar();
@@ -5893,7 +5891,7 @@ static void GetWindowPositionSectionName(HMONITOR hMonitor, WCHAR (&sectionName)
   const int cxScreen = mi.rcMonitor.right - mi.rcMonitor.left;
   const int cyScreen = mi.rcMonitor.bottom - mi.rcMonitor.top;
 
-  wsprintf(sectionName, L"%s %ix%i", INI_SECTION_NAME_WINDOW_POSITION, cxScreen, cyScreen);
+  wsprintfW(sectionName, L"%s %ix%i", INI_SECTION_NAME_WINDOW_POSITION, cxScreen, cyScreen);
 }
 
 //=============================================================================
@@ -7395,13 +7393,13 @@ void UpdateStatusbar() noexcept {
   }
 
   WCHAR itemText[256];
-  const int len = wsprintf(itemText, cachedStatusItem.tchItemFormat, tchCurLine, tchDocLine,
+  const int len = wsprintfW(itemText, cachedStatusItem.tchItemFormat, tchCurLine, tchDocLine,
     tchCurColumn, tchLineColumn, tchCurChar, tchLineChar,
     tchSelChar, tchSelByte, tchLinesSelected, tchMatchesCount);
 
   WCHAR tchPage[32];
   if (bPagedMode) {
-	  wsprintf(tchPage, L"第 %d / %d 页", g_currentPage + 1, (int)g_pages.size());
+	  wsprintfW(tchPage, L"第 %d / %d 页", g_currentPage + 1, (int)g_pages.size());
   } else {
 	  tchPage[0] = L'\0';
   }
@@ -7733,7 +7731,7 @@ static void SaveFilePositionToMRU(LPCWSTR lpszFile) noexcept {
 		c = 1;
 
 	WCHAR szEntry[MAX_PATH + 32];
-	wsprintf(szEntry, L"%s?%d?%d", lpszFile, line, c);
+	wsprintfW(szEntry, L"%s?%d?%d", lpszFile, line, c);
 
 	// 删除所有同路径的条目（不管 ?line?col 是多少）
 	for (int i = 0; i < mruFile.iSize;) {
@@ -8345,11 +8343,11 @@ bool FileLoad(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
 			Sci_Line savedLine = 1;
 			Sci_Position savedCol = 1;
 			WCHAR dbg[256];
-			wsprintf(dbg, L"before FindFilePositionInMRU: pszFile=%s szCurFile=%s\n", pszFile, szCurFile);
+			wsprintfW(dbg, L"before FindFilePositionInMRU: pszFile=%s szCurFile=%s\n", pszFile, szCurFile);
 			OutputDebugString(dbg);
 			if (FindFilePositionInMRU(pszFile, &savedLine, &savedCol)) {
 				//WCHAR dbg[128];
-				wsprintf(dbg, L"found position: line=%ld col=%ld\n", savedLine, savedCol);
+				wsprintfW(dbg, L"found position: line=%ld col=%ld\n", savedLine, savedCol);
 				OutputDebugString(dbg);
 				const Sci_Line totalLines = SciCall_GetLineCount();
 				if (savedLine <= 0 || savedLine > totalLines) {
@@ -8368,7 +8366,7 @@ bool FileLoad(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
 				const Sci_Line line = SciCall_LineFromPosition(pos);
 				const Sci_Line topLine = SciCall_GetFirstVisibleLine();
 				
-				wsprintf(dbg, L"after jump: line=%ld top=%ld\n", line,topLine);
+				wsprintfW(dbg, L"after jump: line=%ld top=%ld\n", line,topLine);
 				OutputDebugString(dbg);
 			}
 			else {
@@ -8899,10 +8897,10 @@ bool RelaunchMultiInst() noexcept {
 
 void GetRelaunchParameters(LPWSTR szParameters, LPCWSTR lpszFile, RelaunchOption option) noexcept {
   WCHAR tch[64];
-  wsprintf(tch, L"-appid=\"%s\"", g_wchAppUserModelID);
+  wsprintfW(tch, L"-appid=\"%s\"", g_wchAppUserModelID);
   lstrcpy(szParameters, tch);
 
-  wsprintf(tch, L" -sysmru=%i", (flagUseSystemMRU == TripleBoolean_True));
+  wsprintfW(tch, L" -sysmru=%i", (flagUseSystemMRU == TripleBoolean_True));
   lstrcat(szParameters, tch);
 
   if (option & RelaunchOption_NewWindow) {
@@ -8931,7 +8929,7 @@ void GetRelaunchParameters(LPWSTR szParameters, LPCWSTR lpszFile, RelaunchOption
   }
 
   const BOOL imax = IsZoomed(hwndMain);
-  wsprintf(tch, L" -pos %i,%i,%i,%i,%i", x, y, cx, cy, imax);
+  wsprintfW(tch, L" -pos %i,%i,%i,%i,%i", x, y, cx, cy, imax);
   lstrcat(szParameters, tch);
 
   if (!(option & RelaunchOption_EmptyWindow) && StrNotEmpty(lpszFile)) {
@@ -9009,9 +9007,9 @@ void GetRelaunchParameters(LPWSTR szParameters, LPCWSTR lpszFile, RelaunchOption
       WCHAR tchCol[32];
       PosToStr(line, tchLn);
       PosToStr(col, tchCol);
-      wsprintf(tch, L" -g %s,%s", tchLn, tchCol);
+      wsprintfW(tch, L" -g %s,%s", tchLn, tchCol);
 #else
-      wsprintf(tch, L" -g %d,%d", static_cast<int>(line), static_cast<int>(col));
+      wsprintfW(tch, L" -g %d,%d", static_cast<int>(line), static_cast<int>(col));
 #endif
       lstrcat(szParameters, tch);
     }
@@ -9499,7 +9497,7 @@ void AutoSave_DoWork(FileSaveFlag saveFlag) noexcept {
   SYSTEMTIME lt;
   GetLocalTime(&lt);
   //printf("%u AutoSave at %02d:%02d:%02d.%03d\n", pid, lt.wHour, lt.wMinute, lt.wSecond, lt.wMilliseconds);
-  wsprintf(suffix, L" %04d%02d%02d %02d%02d%02d %03d%u.%s",
+  wsprintfW(suffix, L" %04d%02d%02d %02d%02d%02d %03d%u.%s",
     lt.wYear, lt.wMonth, lt.wDay,
     lt.wHour, lt.wMinute, lt.wSecond,
     lt.wMilliseconds, pid, extension);

@@ -117,6 +117,8 @@ HFONT	Style_CreateCodeFont(UINT dpi) noexcept;
 void	Style_OnDPIChanged(LPCEDITLEXER pLex) noexcept;
 void	Style_OnStyleThemeChanged(int theme) noexcept;
 void	Style_OnEditorThemeChanged(int option) noexcept;
+// 编辑器滚动条跟随最终生效的编辑器主题（编辑器为暗色时对编辑窗口应用暗色滚动条样式）
+void	Style_UpdateEditorScrollbarTheme() noexcept;
 
 void	Style_InitDefaultColor() noexcept;
 void	Style_SetLexer(PEDITLEXER pLexNew, BOOL bLexerChanged) noexcept;

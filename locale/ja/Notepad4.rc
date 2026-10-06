@@ -460,6 +460,8 @@ BEGIN
 		MENUITEM "行番号(&N)\tCtrl+Shift+N",		IDM_VIEW_LINENUMBERS
 		MENUITEM "行番号/しおりの余白(&M)\tCtrl+Shift+M",	IDM_VIEW_MARGIN
 		MENUITEM "変更履歴の目印(&H)",			IDM_VIEW_CHANGE_HISTORY_MARKER
+		MENUITEM "水平分割(&H)",			IDM_VIEW_SPLIT_H
+		MENUITEM "垂直分割(&V)",			IDM_VIEW_SPLIT_V
 		MENUITEM SEPARATOR
 		MENUITEM "コード折りたたみを表示(&F)\tCtrl+Shift+Alt+F",IDM_VIEW_SHOW_FOLDING
 		POPUP "折りたたみの切り替え(&T)"
@@ -497,10 +499,17 @@ BEGIN
 		MENUITEM "配色のお気に入り(&F)...",			IDM_VIEW_SCHEME_FAVORITE
 		MENUITEM SEPARATOR
 		MENUITEM "コード用の標準配色で表示(&U)\tShift+F12",	IDM_VIEW_USEDEFAULT_CODESTYLE
-		POPUP "カラーテーマ(&Y)"
+		POPUP "プログラムのスタイル(&Y)"
 		BEGIN
-			MENUITEM "標準(&D)",					IDM_VIEW_STYLE_THEME_DEFAULT
-			MENUITEM "ダーク(&K)",						IDM_VIEW_STYLE_THEME_DARK
+			MENUITEM "システムに従う(&D)",					IDM_VIEW_STYLE_THEME_DEFAULT
+			MENUITEM "ライト(&L)",					IDM_VIEW_STYLE_THEME_LIGHT
+			MENUITEM "ダーク(&K)",					IDM_VIEW_STYLE_THEME_DARK
+		END
+		POPUP "エディタのスタイル(&E)"
+		BEGIN
+			MENUITEM "プログラムに従う(&P)",				IDM_VIEW_EDITOR_THEME_FOLLOW, CHECKED
+			MENUITEM "ライト(&L)",						IDM_VIEW_EDITOR_THEME_LIGHT
+			MENUITEM "ダーク(&K)",						IDM_VIEW_EDITOR_THEME_DARK
 		END
 		MENUITEM SEPARATOR
 		POPUP "テキスト文書(&T)"
@@ -660,6 +669,7 @@ BEGIN
 		MENUITEM "単一インスタンスでファイルを開く(&F)",			IDM_VIEW_SINGLEFILEINSTANCE
 		MENUITEM "ファイルの変更を通知(&C)...\tAlt+F5",	IDM_VIEW_CHANGENOTIFY
 		MENUITEM "自動保存の設定(&U)...",			IDM_SET_FILE_AUTOSAVE
+		MENUITEM "大きなファイルのページサイズ...",	IDM_SET_BIGFILE_PAGE_SIZE
 		POPUP "Escキーの動作(&K)"
 		BEGIN
 			MENUITEM "なし(&N)",						IDM_VIEW_NOESCFUNC
@@ -1067,26 +1077,28 @@ END
 // Dialog
 //
 
-IDD_ABOUT DIALOGEX 0, 0, 255, 144
+IDD_ABOUT DIALOGEX 0, 0, 255, 184
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Notepad4"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,142,123,50,14
-    PUSHBUTTON      "コピー",IDC_COPY_BUILD_INFO,198,123,50,14
+    DEFPUSHBUTTON   "OK",IDOK,142,163,50,14
+    PUSHBUTTON      "コピー",IDC_COPY_BUILD_INFO,198,163,50,14
     ICON            IDR_MAINWND,IDC_STATIC,14,7,20,20
     LTEXT           "",IDC_VERSION,45,7,200,8
     LTEXT           "",IDC_BUILD_INFO,45,18,200,16
-    LTEXT           "Copyright © Zufu Liu and all contributors.",IDC_STATIC,45,38,200,8
-    CONTROL         "",IDC_NEW_PAGE_LINK,"SysLink",WS_TABSTOP,45,48,200,10
-    LTEXT           "Copyright © 2010-2017 XhmikosR and all contributors.",IDC_STATIC,45,60,200,8
-    CONTROL         "",IDC_MOD_PAGE_LINK,"SysLink",WS_TABSTOP,45,68,200,10
-    LTEXT           "Copyright © 2011-2026 2004-2012 Florian Balmer.",IDC_STATIC,45,80,200,8
-    CONTROL         "",IDC_WEBPAGE_LINK,"SysLink",WS_TABSTOP,45,88,200,10
-    LTEXT           "Florian Balmer の連絡先:",IDC_STATIC,45,100,94,8
-    CONTROL         "",IDC_EMAIL_LINK,"SysLink",WS_TABSTOP,45,108,94,10
-    LTEXT           "Scintilla のサイトにアクセス:",IDC_STATIC,45,120,94,8
-    CONTROL         "",IDC_SCI_PAGE_LINK,"SysLink",WS_TABSTOP,45,128,94,10
+    LTEXT           "Copyright © 2026-2027 xsoft2005 (wechat).",IDC_STATIC,45,38,200,8 
+    CONTROL         "",IDC_NEW1_PAGE_LINK,"SysLink",WS_TABSTOP,45,48,200,10
+    LTEXT           "Copyright © Zufu Liu and all contributors.",IDC_STATIC,45,60,200,8
+    CONTROL         "",IDC_NEW_PAGE_LINK,"SysLink",WS_TABSTOP,45,70,200,10
+    LTEXT           "Copyright © 2010-2017 XhmikosR and all contributors.",IDC_STATIC,82,60,200,8
+    CONTROL         "",IDC_MOD_PAGE_LINK,"SysLink",WS_TABSTOP,45,92,200,10
+    LTEXT           "Copyright © 2011-2026 2004-2012 Florian Balmer.",IDC_STATIC,45,104,200,8
+    CONTROL         "",IDC_WEBPAGE_LINK,"SysLink",WS_TABSTOP,45,114,200,10
+    LTEXT           "Florian Balmer の連絡先:",IDC_STATIC,45,126,94,8
+    CONTROL         "",IDC_EMAIL_LINK,"SysLink",WS_TABSTOP,45,136,94,10
+    LTEXT           "Scintilla のサイトにアクセス:",IDC_STATIC,45,148,94,8
+    CONTROL         "",IDC_SCI_PAGE_LINK,"SysLink",WS_TABSTOP,45,158,94,10
 END
 
 IDD_FIND DIALOGEX 0, 0, 290, 124
@@ -1738,6 +1750,12 @@ BEGIN
     IDS_LINKDESCRIPTION     "Notepad&4 で編集"
     IDS_FILTER_ALL          "すべてのファイル (*.*)|*.*|"
     IDS_FILTER_EXE          "実行可能ファイル (*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif)|*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif|すべてのファイル (*.*)|*.*|"
+    IDS_PAGED_MODE_NO_SPLIT  "ページングモードでは分割できません。"
+    IDS_PAGE_PREV_TIP  "前のページ"
+    IDS_PAGE_NEXT_TIP  "次のページ"
+    IDS_PAGE_GOTO_TIP  "ページへ移動"
+    IDS_LINE_OUT_OF_RANGE   "行番号が範囲外です。"
+    IDS_LINE_IN_OTHER_PAGE  "その行は %d ページにあります。先にそのページへ移動してください。"
 END
 
 STRINGTABLE
@@ -2103,6 +2121,17 @@ BEGIN
 
 	NP2STYLE_Default				"標準"
 END
+IDD_PAGE_SIZE DIALOGEX 0, 0, 180, 70
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "大きなファイルのページ設定"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "ページサイズ:",IDC_STATIC,7,10,60,8
+    COMBOBOX        IDC_PAGE_SIZE,70,7,100,100,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    DEFPUSHBUTTON   "OK",IDOK,63,45,50,14
+    PUSHBUTTON      "キャンセル",IDCANCEL,119,45,50,14
+END
+
 #endif // NP2_ENABLE_LOCALIZE_STYLE_NAME
 
 

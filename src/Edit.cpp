@@ -5976,12 +5976,12 @@ static INT_PTR CALLBACK EditLineNumDlgProc(HWND hwnd, UINT umsg, WPARAM wParam, 
 
 		FormatNumber(tchLn, iMaxLine);
 		GetDlgItemText(hwnd, IDC_LINE_RANGE, tchFmt, COUNTOF(tchFmt));
-		wsprintf(tchLines, tchFmt, tchLn);
+		wsprintfW(tchLines, tchFmt, tchLn);
 		SetDlgItemText(hwnd, IDC_LINE_RANGE, tchLines);
 
 		FormatNumber(tchLn, iLength);
 		GetDlgItemText(hwnd, IDC_COLUMN_RANGE, tchFmt, COUNTOF(tchFmt));
-		wsprintf(tchLines, tchFmt, tchLn);
+		wsprintfW(tchLines, tchFmt, tchLn);
 		SetDlgItemText(hwnd, IDC_COLUMN_RANGE, tchLines);
 
 		DarkMode_InitDialog(hwnd);
@@ -6434,7 +6434,7 @@ void EditInsertDateTime(bool bShort) noexcept {
 		GetDateFormat(LOCALE_USER_DEFAULT, bShort ? DATE_SHORTDATE : DATE_LONGDATE, &st, nullptr, tchDate, COUNTOF(tchDate));
 		GetTimeFormat(LOCALE_USER_DEFAULT, TIME_NOSECONDS, &st, nullptr, tchTime, COUNTOF(tchTime));
 #endif
-		wsprintf(tchDateTime, L"%s %s", tchTime, tchDate);
+		wsprintfW(tchDateTime, L"%s %s", tchTime, tchDate);
 	}
 
 	const UINT cpEdit = SciCall_GetCodePage();
@@ -6723,7 +6723,7 @@ void EditSelectionAction(int action) noexcept {
 
 	cchEscapedW = NP2_align_up(cchEscapedW + COUNTOF(szCmdTemplate) + 32, MEMORY_ALLOCATION_ALIGNMENT);
 	LPWSTR lpszCommand = static_cast<LPWSTR>(NP2HeapAlloc(sizeof(WCHAR) * cchEscapedW * 2));
-	wsprintf(lpszCommand, szCmdTemplate, pszEscapedW);
+	wsprintfW(lpszCommand, szCmdTemplate, pszEscapedW);
 
 	LPWSTR lpszArgs = lpszCommand + cchEscapedW;
 	ExtractFirstArgument(lpszCommand, lpszCommand, lpszArgs);
@@ -6763,7 +6763,7 @@ void TryBrowseFile(HWND hwnd, LPCWSTR pszFile, bool bWarn) noexcept {
 	SetStrEmpty(tchExeFile);
 
 	WCHAR dbg[128];
-	wsprintf(dbg, L"np2StyleTheme=%d, np2StyleThemeOption=%d, IsSystemDarkMode=%d\n",
+	wsprintfW(dbg, L"np2StyleTheme=%d, np2StyleThemeOption=%d, IsSystemDarkMode=%d\n",
 		(int)np2StyleTheme, (int)np2StyleThemeOption, (int)IsSystemDarkMode());
 	OutputDebugString(dbg);
 
@@ -6785,7 +6785,7 @@ void TryBrowseFile(HWND hwnd, LPCWSTR pszFile, bool bWarn) noexcept {
 	// 把当前程序主题传给 matepath
 	{
 		WCHAR tchTheme[32];
-		wsprintf(tchTheme, L"-theme %s",
+		wsprintfW(tchTheme, L"-theme %s",
 			(np2StyleTheme == StyleTheme_Dark) ? L"dark" : L"light");
 		if (StrNotEmpty(tchParam)) {
 			StrCatBuff(tchParam, L" ", COUNTOF(tchParam));
@@ -7098,7 +7098,7 @@ void EditOpenSelection(OpenSelectionType type) {
 			if (line != nullptr) {
 				// TODO: improve the code when column is actually character index
 				lpParameters = static_cast<LPWSTR>(NP2HeapAlloc(sizeof(path)));
-				wsprintf(lpParameters, L"-g %s,%s %s", line, column, link);
+				wsprintfW(lpParameters, L"-g %s,%s %s", line, column, link);
 			}
 
 			SHELLEXECUTEINFO sei;

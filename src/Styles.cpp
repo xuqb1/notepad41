@@ -754,7 +754,7 @@ void Style_GetFavoriteSchemes() noexcept {
 			break;
 		}
 
-		len += wsprintf(wch + len, L"%i ", pLex->rid - NP2LEX_TEXTFILE);
+		len += wsprintfW(wch + len, L"%i ", pLex->rid - NP2LEX_TEXTFILE);
 		++count;
 		if (count == MAX_FAVORITE_SCHEMES_COUNT || len > MAX_FAVORITE_SCHEMES_SAFE_SIZE) {
 			break;
@@ -982,8 +982,8 @@ void Style_Save() noexcept {
 			if (color != defaultCustomColor[i]) {
 				WCHAR tch[4];
 				WCHAR wch[16];
-				wsprintf(tch, L"%02u", i + 1);
-				wsprintf(wch, L"#%06X", ColorToRGBHex(color));
+				wsprintfW(tch, L"%02u", i + 1);
+				wsprintfW(wch, L"#%06X", ColorToRGBHex(color));
 				section.SetString(tch, wch);
 			}
 		}
@@ -1198,6 +1198,20 @@ void Style_OnDPIChanged(LPCEDITLEXER pLex) noexcept {
 	} while (iMarkerIDs);
 }
 
+// 编辑器滚动条跟随最终生效的编辑器主题：
+// 编辑器风格=暗色，或编辑器风格=随程序且程序主题为暗色（含随系统且系统为暗色）时，
+// 对两个编辑窗格应用暗色滚动条；否则恢复系统默认滚动条。
+void Style_UpdateEditorScrollbarTheme() noexcept {
+	if (hwndEdit1 == nullptr) {
+		return;
+	}
+	const bool bDark = (np2EditorTheme == StyleTheme_Dark);
+	dmlib::setDarkScrollBarForWindow(hwndEdit1, bDark);
+	if (hwndEdit2 != nullptr) {
+		dmlib::setDarkScrollBarForWindow(hwndEdit2, bDark);
+	}
+}
+
 void Style_OnStyleThemeChanged(int theme) noexcept {
 	if (theme == np2StyleThemeOption) {
 		return;
@@ -1236,7 +1250,7 @@ void Style_OnStyleThemeChanged(int theme) noexcept {
 	}
 
 	if (hwndEdit) {
-		dmlib::enableDarkScrollBarForWindowAndChildren(hwndEdit);
+		Style_UpdateEditorScrollbarTheme();
 	}
 }
 
@@ -1266,6 +1280,9 @@ void Style_OnEditorThemeChanged(int option) noexcept {
 
 	// 切回当前活动窗格
 	InitScintillaHandle(hwndEdit);
+
+	// 滚动条跟随新的编辑器主题
+	Style_UpdateEditorScrollbarTheme();
 }
 
 void Style_UpdateCaret() noexcept {
@@ -3279,7 +3296,7 @@ static LPWSTR AddLexFilterStr(FileDialog &dialog, LPWSTR szFilter, LPCEDITLEXER 
 		*ptr = L'\0';
 
 		WCHAR wch[MAX_PATH];
-		const UINT len = wsprintf(wch, L"*%s;", lpszExt);
+		const UINT len = wsprintfW(wch, L"*%s;", lpszExt);
 		if (StrStrI(extensions, wch) == nullptr) {
 			++count;
 			lstrcpy(ptr, wch);
@@ -3307,7 +3324,7 @@ static LPWSTR AddLexFilterStr(FileDialog &dialog, LPWSTR szFilter, LPCEDITLEXER 
 	LPCWSTR pszName = pLex->pszName;
 #endif
 
-	UINT len = wsprintf(szFilter, L"%s (%s)", pszName, extensions);
+	UINT len = wsprintfW(szFilter, L"%s (%s)", pszName, extensions);
 	LPCWSTR lpszName = szFilter;
 	szFilter += len + 1;
 	len = static_cast<UINT>(ptr - extensions) + 1;
@@ -3327,7 +3344,7 @@ NP2_noinline
 void Style_GetFileDialogFilter(FileDialog &dialog, LPCWSTR lpszFile, int lexers[]) noexcept {
 	if (pLexCurrent == nullptr || pLexCurrent->szExtensions == nullptr) {
 		WCHAR dbg[128];
-		wsprintf(dbg, L"pLexCurrent=%p szExt=%p", pLexCurrent,
+		wsprintfW(dbg, L"pLexCurrent=%p szExt=%p", pLexCurrent,
 			pLexCurrent ? pLexCurrent->szExtensions : nullptr);
 		SetWindowText(hwndMain, dbg);
 		return;
@@ -3753,7 +3770,7 @@ bool Style_SelectColor(HWND hwnd, LPWSTR lpszStyle, int cchStyle, bool bFore) no
 		if (StrNotEmpty(szNewStyle)) {
 			lstrcat(szNewStyle, L"; ");
 		}
-		wsprintf(tch, L"fore:#%06X", static_cast<unsigned>(iRGBResult));
+		wsprintfW(tch, L"fore:#%06X", static_cast<unsigned>(iRGBResult));
 		lstrcat(szNewStyle, tch);
 		Style_StrCopyBack(szNewStyle, lpszStyle, tch);
 	} else {
@@ -3761,7 +3778,7 @@ bool Style_SelectColor(HWND hwnd, LPWSTR lpszStyle, int cchStyle, bool bFore) no
 		if (StrNotEmpty(szNewStyle)) {
 			lstrcat(szNewStyle, L"; ");
 		}
-		wsprintf(tch, L"back:#%06X", static_cast<unsigned>(iRGBResult));
+		wsprintfW(tch, L"back:#%06X", static_cast<unsigned>(iRGBResult));
 		lstrcat(szNewStyle, tch);
 	}
 
@@ -5060,7 +5077,7 @@ static void Style_GetFavoriteSchemesFromTreeView(HWND hwndTV, HTREEITEM hFavorit
 			PEDITLEXER pLex = AsPointer<PEDITLEXER>(item.lParam);
 			pLex->iFavoriteOrder = MAX_FAVORITE_SCHEMES_COUNT - count;
 
-			len += wsprintf(wch + len, L"%i ", pLex->rid - NP2LEX_TEXTFILE);
+			len += wsprintfW(wch + len, L"%i ", pLex->rid - NP2LEX_TEXTFILE);
 			++count;
 			if (count == MAX_FAVORITE_SCHEMES_COUNT || len > MAX_FAVORITE_SCHEMES_SAFE_SIZE) {
 				break;

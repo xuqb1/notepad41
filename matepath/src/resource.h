@@ -39,6 +39,7 @@
 #define IDC_WEBPAGE_LINK				101
 #define IDC_EMAIL_LINK					102
 #define IDC_NEW_PAGE_LINK				103
+#define IDC_NEW1_PAGE_LINK				104
 #define IDC_BUILD_INFO					110
 #define IDC_COPY_BUILD_INFO				111
 // Run

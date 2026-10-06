@@ -28,6 +28,7 @@
 #define VERSION_WEBPAGE_DISPLAY		L"flo's freeware - https://www.flos-freeware.ch"
 #define VERSION_EMAIL_DISPLAY		L"florian.balmer@gmail.com"
 #define VERSION_MODPAGE_DISPLAY		L"https://xhmikosr.github.io/notepad2-mod/"
+#define VERSION_NEWPAGE1_DISPLAY		L"https://github.com/xuqb1/notepad41"
 #define VERSION_NEWPAGE_DISPLAY		L"https://github.com/zufuliu/notepad4"
 #define VERSION_SCIPAGE_DISPLAY		L"https://www.scintilla.org/"
 

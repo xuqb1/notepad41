@@ -460,6 +460,8 @@ BEGIN
 		MENUITEM "&Numeri linee\tCtrl+Shift+N",		IDM_VIEW_LINENUMBERS
 		MENUITEM "Mar&gine segnalibri\tCtrl+Shift+M",	IDM_VIEW_MARGIN
 		MENUITEM "Marcatore &Cronologia",			IDM_VIEW_CHANGE_HISTORY_MARKER
+		MENUITEM "Dividi orizzontalmente",			IDM_VIEW_SPLIT_H
+		MENUITEM "Dividi verticalmente",			IDM_VIEW_SPLIT_V
 		MENUITEM SEPARATOR
 		MENUITEM "Mostra Code &Folding\tCtrl+Shift+Alt+F",IDM_VIEW_SHOW_FOLDING
 		POPUP "Chiudi F&olds"
@@ -497,10 +499,17 @@ BEGIN
 		MENUITEM "Sc&hemi preferiti...",			IDM_VIEW_SCHEME_FAVORITE
 		MENUITEM SEPARATOR
 		MENUITEM "&Usa lo stile predefinito per il codice\tShift+F12",	IDM_VIEW_USEDEFAULT_CODESTYLE
-		POPUP "St&ile Tema"
+		POPUP "Stile programma"
 		BEGIN
-			MENUITEM "&Predefinito",					IDM_VIEW_STYLE_THEME_DEFAULT
-			MENUITEM "&Scuro",						IDM_VIEW_STYLE_THEME_DARK
+			MENUITEM "Dal sistema",					IDM_VIEW_STYLE_THEME_DEFAULT
+			MENUITEM "Chiaro",					IDM_VIEW_STYLE_THEME_LIGHT
+			MENUITEM "Scuro",					IDM_VIEW_STYLE_THEME_DARK
+		END
+		POPUP "Stile editor"
+		BEGIN
+			MENUITEM "Come programma",				IDM_VIEW_EDITOR_THEME_FOLLOW, CHECKED
+			MENUITEM "Chiaro",						IDM_VIEW_EDITOR_THEME_LIGHT
+			MENUITEM "Scuro",						IDM_VIEW_EDITOR_THEME_DARK
 		END
 		MENUITEM SEPARATOR
 		POPUP "&File di testo"
@@ -660,6 +669,7 @@ BEGIN
 		MENUITEM "Solo u&n'istanza per file",			IDM_VIEW_SINGLEFILEINSTANCE
 		MENUITEM "Not&ifica variazioni file...\tAlt+F5",	IDM_VIEW_CHANGENOTIFY
 		MENUITEM "Impostazioni Autosalvata&ggio...",			IDM_SET_FILE_AUTOSAVE
+		MENUITEM "Dimensione pagina file grandi...",	IDM_SET_BIGFILE_PAGE_SIZE
 		POPUP "Funzioni ext&ra tasto Esc"
 		BEGIN
 			MENUITEM "&Nessuna",						IDM_VIEW_NOESCFUNC
@@ -1067,26 +1077,28 @@ END
 // Dialog
 //
 
-IDD_ABOUT DIALOGEX 0, 0, 255, 144
+IDD_ABOUT DIALOGEX 0, 0, 255, 184
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Notepad4"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,142,123,50,14
-    PUSHBUTTON      "Copia",IDC_COPY_BUILD_INFO,198,123,50,14
+    DEFPUSHBUTTON   "OK",IDOK,142,163,50,14
+    PUSHBUTTON      "Copia",IDC_COPY_BUILD_INFO,198,163,50,14
     ICON            IDR_MAINWND,IDC_STATIC,14,7,20,20
     LTEXT           "",IDC_VERSION,45,7,200,8
     LTEXT           "",IDC_BUILD_INFO,45,18,200,16
-    LTEXT           "Copyright © 2011-2026 Zufu Liu e tutti i contributori.",IDC_STATIC,45,38,200,8
-    CONTROL         "",IDC_NEW_PAGE_LINK,"SysLink",WS_TABSTOP,45,48,200,10
-    LTEXT           "Copyright © 2010-2017 XhmikosR e tutti i contributori.",IDC_STATIC,45,60,200,8
-    CONTROL         "",IDC_MOD_PAGE_LINK,"SysLink",WS_TABSTOP,45,68,200,10
-    LTEXT           "Copyright © 2004-2012 Florian Balmer.",IDC_STATIC,45,80,200,8
-    CONTROL         "",IDC_WEBPAGE_LINK,"SysLink",WS_TABSTOP,45,88,200,10
-    LTEXT           "Contatta Florian Balmer:",IDC_STATIC,45,100,94,8
-    CONTROL         "",IDC_EMAIL_LINK,"SysLink",WS_TABSTOP,45,108,94,10
-    LTEXT           "Visita il sito web Scintilla:",IDC_STATIC,45,120,94,8
-    CONTROL         "",IDC_SCI_PAGE_LINK,"SysLink",WS_TABSTOP,45,128,94,10
+    LTEXT           "Copyright © 2026-2027 xsoft2005 (wechat).",IDC_STATIC,45,38,200,8 
+    CONTROL         "",IDC_NEW1_PAGE_LINK,"SysLink",WS_TABSTOP,45,48,200,10
+    LTEXT           "Copyright © 2011-2026 Zufu Liu e tutti i contributori.",IDC_STATIC,45,60,200,8
+    CONTROL         "",IDC_NEW_PAGE_LINK,"SysLink",WS_TABSTOP,45,70,200,10
+    LTEXT           "Copyright © 2010-2017 XhmikosR e tutti i contributori.",IDC_STATIC,45,82,200,8
+    CONTROL         "",IDC_MOD_PAGE_LINK,"SysLink",WS_TABSTOP,45,92,200,10
+    LTEXT           "Copyright © 2004-2012 Florian Balmer.",IDC_STATIC,45,104,200,8
+    CONTROL         "",IDC_WEBPAGE_LINK,"SysLink",WS_TABSTOP,45,114,200,10
+    LTEXT           "Contatta Florian Balmer:",IDC_STATIC,45,126,94,8
+    CONTROL         "",IDC_EMAIL_LINK,"SysLink",WS_TABSTOP,45,136,94,10
+    LTEXT           "Visita il sito web Scintilla:",IDC_STATIC,45,148,94,8
+    CONTROL         "",IDC_SCI_PAGE_LINK,"SysLink",WS_TABSTOP,45,158,94,10
 END
 
 IDD_FIND DIALOGEX 0, 0, 290, 124
@@ -1738,6 +1750,12 @@ BEGIN
     IDS_LINKDESCRIPTION     "Modifica con Notepad&4"
     IDS_FILTER_ALL          "Tutti i files (*.*)|*.*|"
     IDS_FILTER_EXE          "File Eseguibili (*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif)|*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif|All Files (*.*)|*.*|"
+    IDS_PAGED_MODE_NO_SPLIT  "La divisione non è disponibile in modalità a pagine."
+    IDS_PAGE_PREV_TIP  "Pagina precedente"
+    IDS_PAGE_NEXT_TIP  "Pagina successiva"
+    IDS_PAGE_GOTO_TIP  "Vai alla pagina"
+    IDS_LINE_OUT_OF_RANGE   "Numero di riga fuori intervallo."
+    IDS_LINE_IN_OTHER_PAGE  "La riga si trova a pagina %d. Andare prima a quella pagina."
 END
 
 STRINGTABLE
@@ -2102,6 +2120,17 @@ BEGIN
 
 	NP2STYLE_Default				"Predefinito"
 END
+IDD_PAGE_SIZE DIALOGEX 0, 0, 180, 70
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Dimensione pagina file grandi"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "Dimensione pagina:",IDC_STATIC,7,10,60,8
+    COMBOBOX        IDC_PAGE_SIZE,70,7,100,100,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    DEFPUSHBUTTON   "OK",IDOK,63,45,50,14
+    PUSHBUTTON      "Annulla",IDCANCEL,119,45,50,14
+END
+
 #endif // NP2_ENABLE_LOCALIZE_STYLE_NAME
 
 

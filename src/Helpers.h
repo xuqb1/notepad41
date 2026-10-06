@@ -1153,7 +1153,7 @@ inline int GetString(UINT uID, LPWSTR lpBuffer, int cchBufferMax) noexcept {
  */
 #define FormatString(lpOutput, lpFormat, uIdFormat, ...) do {	\
 		GetString((uIdFormat), (lpFormat), COUNTOF(lpFormat));	\
-		wsprintf((lpOutput), (lpFormat), __VA_ARGS__);			\
+		wsprintfW((lpOutput), (lpFormat), __VA_ARGS__);			\
 	} while (0)
 
 inline bool PathIsFile(LPCWSTR pszPath) noexcept {

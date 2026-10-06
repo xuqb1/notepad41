@@ -127,6 +127,7 @@
 #define IDC_AUTOSAVE_SHUTDOWN           103
 #define IDC_CSV_DELIMITER_SPACE         103
 #define IDB_TOOLBAR48                   104
+#define IDC_NEW1_PAGE_LINK              114
 #define IDC_NEW_PAGE_LINK               104
 #define IDC_FINDWORD                    104
 #define IDC_APPLICATION_NAME            104

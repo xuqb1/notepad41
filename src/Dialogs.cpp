@@ -117,7 +117,7 @@ int MsgBox(UINT uType, UINT uIdMsg, ...) noexcept {
 	DialogHook_Start(DialogRefData_MessageBox);
 	//{
 	//	WCHAR dbg[64];
-	//	wsprintf(dbg, L"\n\n[debug: theme=%d]", np2StyleTheme);
+	//	wsprintfW(dbg, L"\n\n[debug: theme=%d]", np2StyleTheme);
 	//	StrCatBuff(szText, dbg, COUNTOF(szText));
 	//}
 	int result = -1;
@@ -181,6 +181,9 @@ void OpenHelpLink(HWND hwnd, int cmd) noexcept {
 		break;
 	case IDC_SCI_PAGE_LINK:
 		link = VERSION_SCIPAGE_DISPLAY;
+		break;
+	case IDC_NEW1_PAGE_LINK:
+		link = VERSION_NEWPAGE1_DISPLAY;
 		break;
 	case IDC_NEW_PAGE_LINK:
 	case IDM_HELP_PROJECT_HOME:
@@ -260,10 +263,10 @@ INT_PTR CALLBACK AboutDlgProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam
 	case WM_INITDIALOG: {
 		WCHAR wch[128];
 #if defined(VERSION_BUILD_TOOL_BUILD)
-		wsprintf(wch, VERSION_BUILD_INFO_FORMAT, VERSION_BUILD_TOOL_NAME,
+		wsprintfW(wch, VERSION_BUILD_INFO_FORMAT, VERSION_BUILD_TOOL_NAME,
 			VERSION_BUILD_TOOL_MAJOR, VERSION_BUILD_TOOL_MINOR, VERSION_BUILD_TOOL_PATCH, VERSION_BUILD_TOOL_BUILD);
 #else
-		wsprintf(wch, VERSION_BUILD_INFO_FORMAT, VERSION_BUILD_TOOL_NAME,
+		wsprintfW(wch, VERSION_BUILD_INFO_FORMAT, VERSION_BUILD_TOOL_NAME,
 			VERSION_BUILD_TOOL_MAJOR, VERSION_BUILD_TOOL_MINOR, VERSION_BUILD_TOOL_PATCH);
 #endif
 
@@ -278,15 +281,17 @@ INT_PTR CALLBACK AboutDlgProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam
 		SendDlgItemMessage(hwnd, IDC_VERSION, WM_SETFONT, AsInteger<WPARAM>(hFontTitle), TRUE);
 		SetWindowLongPtr(hwnd, DWLP_USER, AsInteger<LONG_PTR>(hFontTitle));
 
-		wsprintf(wch, L"<A>%s</A>", VERSION_WEBPAGE_DISPLAY);
+		wsprintfW(wch, L"<A>%s</A>", VERSION_WEBPAGE_DISPLAY);
 		SetDlgItemText(hwnd, IDC_WEBPAGE_LINK, wch);
-		wsprintf(wch, L"<A>%s</A>", VERSION_EMAIL_DISPLAY);
+		wsprintfW(wch, L"<A>%s</A>", VERSION_EMAIL_DISPLAY);
 		SetDlgItemText(hwnd, IDC_EMAIL_LINK, wch);
-		wsprintf(wch, L"<A>%s</A>", VERSION_MODPAGE_DISPLAY);
+		wsprintfW(wch, L"<A>%s</A>", VERSION_MODPAGE_DISPLAY);
 		SetDlgItemText(hwnd, IDC_MOD_PAGE_LINK, wch);
-		wsprintf(wch, L"<A>%s</A>", VERSION_NEWPAGE_DISPLAY);
+		wsprintfW(wch, L"<A>%s</A>", VERSION_NEWPAGE1_DISPLAY);
+		SetDlgItemText(hwnd, IDC_NEW1_PAGE_LINK, wch);
+		wsprintfW(wch, L"<A>%s</A>", VERSION_NEWPAGE_DISPLAY);
 		SetDlgItemText(hwnd, IDC_NEW_PAGE_LINK, wch);
-		wsprintf(wch, L"<A>%s</A>", VERSION_SCIPAGE_DISPLAY);
+		wsprintfW(wch, L"<A>%s</A>", VERSION_SCIPAGE_DISPLAY);
 		SetDlgItemText(hwnd, IDC_SCI_PAGE_LINK, wch);
 
 		DarkMode_InitDialog(hwnd);
@@ -325,7 +330,7 @@ INT_PTR CALLBACK AboutDlgProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam
 				LPCWSTR defaultEncoding = Encoding_GetLabel(iEncoding);
 				LPCWSTR currentEncoding = Encoding_GetLabel(iCurrentEncoding);
 				GetDlgItemText(hwnd, IDC_BUILD_INFO, wch, COUNTOF(wch));
-				wsprintf(tch, L"%s\n%s\nEncoding: %s, %s\nScheme: %s, %s\nSystem: %u.%u.%u %s %s\n",
+				wsprintfW(tch, L"%s\n%s\nEncoding: %s, %s\nScheme: %s, %s\nSystem: %u.%u.%u %s %s\n",
 					VERSION_FILEVERSION_LONG, wch,
 					currentEncoding, defaultEncoding,
 					PathFindExtension(szCurFile), pLexCurrent->pszName,
@@ -1890,7 +1895,7 @@ static INT_PTR CALLBACK WarnLineEndingDlgProc(HWND hwnd, UINT umsg, WPARAM wPara
 			WCHAR tchLn[32];
 			FormatNumber(tchLn, status->linesCount[i]);
 			GetDlgItemText(hwnd, IDC_EOL_SUM_CRLF + i, tchFmt, COUNTOF(tchFmt));
-			wsprintf(wch, tchFmt, tchLn);
+			wsprintfW(wch, tchFmt, tchLn);
 			SetDlgItemText(hwnd, IDC_EOL_SUM_CRLF + i, wch);
 		}
 
@@ -1946,14 +1951,14 @@ void InitZoomLevelComboBox(HWND hwnd, int nCtlId, int zoomLevel) noexcept {
 		if (zoomLevel == level) {
 			selIndex = i;
 		}
-		wsprintf(tch, L"%d%%", level);
+		wsprintfW(tch, L"%d%%", level);
 		ComboBox_AddString(hwndCtl, tch);
 	}
 
 	ComboBox_SetExtendedUI(hwndCtl, TRUE);
 	ComboBox_SetCurSel(hwndCtl, selIndex);
 	if (selIndex < 0) {
-		wsprintf(tch, L"%d%%", zoomLevel);
+		wsprintfW(tch, L"%d%%", zoomLevel);
 		SetWindowText(hwndCtl, tch);
 	}
 }
@@ -2037,7 +2042,7 @@ static INT_PTR CALLBACK AutoCompletionSettingsDlgProc(HWND hwnd, UINT umsg, WPAR
 		SendDlgItemMessage(hwnd, IDC_AUTOC_MIN_NUMBER_LENGTH, EM_LIMITTEXT, 8, 0);
 
 		WCHAR wch[32];
-		wsprintf(wch, L"%u ms", autoCompletionConfig.dwScanWordsTimeout);
+		wsprintfW(wch, L"%u ms", autoCompletionConfig.dwScanWordsTimeout);
 		SetDlgItemText(hwnd, IDC_AUTOC_SCAN_WORDS_TIMEOUT, wch);
 
 		mask = autoCompletionConfig.fCompleteScope;
@@ -2273,9 +2278,9 @@ static INT_PTR CALLBACK AutoSaveSettingsDlgProc(HWND hwnd, UINT umsg, WPARAM wPa
 		const UINT seconds = dwAutoSavePeriod / 1000;
 		const UINT milliseconds = dwAutoSavePeriod % 1000;
 		if (milliseconds) {
-			wsprintf(tch, L"%u.%03u", seconds, milliseconds);
+			wsprintfW(tch, L"%u.%03u", seconds, milliseconds);
 		} else {
-			wsprintf(tch, L"%u.0", seconds);
+			wsprintfW(tch, L"%u.0", seconds);
 		}
 		SetDlgItemText(hwnd, IDC_AUTOSAVE_PERIOD, tch);
 
@@ -2595,7 +2600,7 @@ void UpdateSystemIntegrationStatus(DWORD mask, const SystemIntegrationInfo &info
 	WCHAR tchModule[MAX_PATH];
 	GetModuleFileName(nullptr, tchModule, COUNTOF(tchModule));
 	WCHAR command[300];
-	wsprintf(command, L"\"%s\" \"%%1\"", tchModule);
+	wsprintfW(command, L"\"%s\" \"%%1\"", tchModule);
 
 	// context menu
 	// delete the old one: HKEY_CLASSES_ROOT\*\shell\Notepad4.exe
@@ -2643,7 +2648,7 @@ void UpdateSystemIntegrationStatus(DWORD mask, const SystemIntegrationInfo &info
 		HKEY hKey;
 		const LSTATUS status = Registry_CreateKey(HKEY_LOCAL_MACHINE, NP2RegSubKey_ReplaceNotepad, &hKey, samDesired_WOW64_64KEY);
 		if (status == ERROR_SUCCESS) {
-			wsprintf(command, L"\"%s\" /z", tchModule);
+			wsprintfW(command, L"\"%s\" /z", tchModule);
 			Registry_SetDefaultString(hKey, tchModule);
 			Registry_SetString(hKey, L"Debugger", command);
 			Registry_SetInt(hKey, L"UseFilter", 0);
@@ -2803,7 +2808,7 @@ static INT_PTR CALLBACK PageSizeDlgProc(HWND hwnd, UINT umsg, WPARAM wParam, LPA
 		HWND hCombo = GetDlgItem(hwnd, IDC_PAGE_SIZE);
 		for (UINT i = 0; i < COUNTOF(pageSizeOptions); i++) {
 			WCHAR szText[32];
-			wsprintf(szText, L"%u MB", pageSizeOptions[i]);
+			wsprintfW(szText, L"%u MB", pageSizeOptions[i]);
 			ComboBox_AddString(hCombo, szText);
 			if (pageSizeOptions[i] == static_cast<UINT>(g_pageSize / (1024 * 1024))) {
 				ComboBox_SetCurSel(hCombo, i);
